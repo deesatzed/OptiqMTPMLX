@@ -41,6 +41,7 @@ from .persistence import (
     save_session,
 )
 from .session import ChatSession as CoreChatSession
+from .theme import get_color
 
 
 class NexTUI(App):
@@ -169,7 +170,13 @@ class NexTUI(App):
         content_lines = []
         for msg in (self.chat_session.messages if self.chat_session else []):
             role = "**You:**" if msg["role"] == "user" else "**Nex:**"
-            content_lines.append(f"{role} {msg['content'].strip()}")
+            text = msg["content"].strip()
+            # Simple think tag handling for nicer display in Markdown
+            if "<think>" in text and "</think>" in text:
+                before, rest = text.split("<think>", 1)
+                think_content, after = rest.split("</think>", 1)
+                text = f"{before}\n\n> **Thinking:**\n> {think_content.strip()}\n\n{after}"
+            content_lines.append(f"{role} {text}")
         log.update("\n\n".join(content_lines) or "*Start typing below...*")
 
     def _persist(self) -> None:

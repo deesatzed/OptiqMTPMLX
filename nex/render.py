@@ -10,6 +10,8 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
+from .theme import get_color
+
 console = Console()
 
 THINK_START = re.compile(r"<think>", re.IGNORECASE)
@@ -145,13 +147,14 @@ class ThinkAwareStreamer:
 
 
 def print_welcome(model_name: str = "Nex / OptiQ model"):
+    accent = get_color("primary")
     console.print(
         Panel.fit(
-            f"[bold cyan]Nex[/bold cyan] — [dim]{model_name}[/dim]\n"
+            f"[bold {accent}]Nex[/bold {accent}] — [dim]{model_name}[/dim]\n"
             "Apple Silicon via [green]mlx-lm[/green]  •  Multi-Model OptiQ support\n\n"
             "Type [bold]/help[/bold] for commands. [bold]Ctrl-C[/bold] or [bold]/quit[/bold] to exit.\n"
             "Discover models with: [bold]nex models list[/bold]",
-            border_style="cyan",
+            border_style=accent,
         )
     )
 
