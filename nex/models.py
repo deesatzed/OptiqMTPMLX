@@ -60,6 +60,9 @@ class ModelProfile:
     mtp_repo_id: Optional[str] = None  # e.g. the -MTP variant repo for draft_model
     recommended_num_draft_tokens: int = 3
 
+    # Memory estimate (for recommender / warnings)
+    approx_memory_gb: Optional[float] = None
+
 
 # =============================================================================
 # Curated high-quality OptiQ (and close relatives) registry
@@ -83,6 +86,7 @@ KNOWN_MODELS: Dict[str, ModelProfile] = {
         supports_mtp=True,
         mtp_repo_id="jedisct1/Nex-N2-mini-mlx-OptiQ-4bit-MTP",
         recommended_num_draft_tokens=3,
+        approx_memory_gb=6.0,
     ),
     "nex-n2-mini-mtp": ModelProfile(
         repo_id="jedisct1/Nex-N2-mini-mlx-OptiQ-4bit-MTP",
@@ -301,11 +305,55 @@ def suggest_similar(current_repo: str, limit: int = 4) -> List[ModelProfile]:
         if p.repo_id != current.repo_id
     ]
 
-    # Prefer same family
     same_family = [p for p in candidates if p.family == current.family]
     if same_family:
         candidates = same_family + [p for p in candidates if p not in same_family]
 
-    # Prefer similar size
     candidates.sort(key=lambda p: (p.family != current.family, p.size_class != current.size_class))
     return candidates[:limit]
+
+
+# ---------------- Model Download & Recommendation (Phase 4) ----------------
+
+def download_model(repo_or_alias: str, force: bool = False) -> str:
+    """Download a model using huggingface_hub (with nice progress)."""
+    from huggingface_hub import snapshot_download
+
+    profile = get_profile(repo_or_alias)
+    repo_id = profile.repo_id
+
+    print(f"Downloading {profile.name} ({repo_id}) ...")
+    local_path = snapshot_download(
+        repo_id=repo_id,
+        local_dir_use_symlinks=False,
+        resume_download=True,
+    )
+    print(f"✓ Downloaded to {local_path}")
+    return local_path
+
+
+def recommend_models(
+    query: str = "coding tool use",
+    max_memory_gb: Optional[float] = None,
+    limit: int = 5,
+) -> List[ModelProfile]:
+    """Simple recommender based on strengths and memory."""
+    q = query.lower()
+    results = []
+
+    for p in KNOWN_MODELS.values():
+        score = 0
+        for strength in p.strengths:
+            if strength.lower() in q:
+                score += 2
+        if "fast" in q or "speed" in q:
+            if p.size_class in ("tiny", "small"):
+                score += 1
+        if max_memory_gb and hasattr(p, "approx_memory_gb") and p.approx_memory_gb:
+            if p.approx_memory_gb > max_memory_gb:
+                continue
+        if score > 0:
+            results.append((score, p))
+
+    results.sort(key=lambda x: -x[0])
+    return [p for _, p in results[:limit]]

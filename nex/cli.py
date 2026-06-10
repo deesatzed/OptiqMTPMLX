@@ -533,6 +533,40 @@ def tui(
     run_tui()
 
 
+@app.command()
+def serve(
+    port: int = typer.Option(8000, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option("0.0.0.0", "--host", help="Host to bind to"),
+    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp"),
+    draft_model: Optional[str] = typer.Option(None, "--draft-model"),
+    num_draft_tokens: int = typer.Option(3, "--num-draft-tokens"),
+):
+    """Start an OpenAI-compatible HTTP server (FastAPI + Uvicorn).
+
+    This lets any tool that speaks the OpenAI API (Cursor, Continue.dev, Aider, custom agents, etc.)
+    use your local high-quality OptiQ models with full MTP support.
+    """
+    import uvicorn
+
+    # Pre-load the engine so the first request is fast and shows the nice loading UX
+    if model or enable_mtp:
+        from .cli import _get_engine  # reuse our smart engine factory
+
+        _get_engine(model, enable_mtp, draft_model, num_draft_tokens)
+
+    console.print(f"[bold cyan]Starting Nex OpenAI-compatible server on http://{host}:{port}[/bold cyan]")
+    console.print("[dim]Endpoints: /v1/chat/completions, /v1/models, /health[/dim]")
+    console.print("[dim]Use --model qwen9b --enable-mtp etc. (same flags as other commands)[/dim]")
+
+    uvicorn.run(
+        "nex.server:app",
+        host=host,
+        port=port,
+        reload=False,
+    )
+
+
 # ------------------------------------------------------------------
 # Utility commands
 # ------------------------------------------------------------------
@@ -635,6 +669,46 @@ def models_add(repo: str = typer.Argument(..., help="Full HF repo id of an addit
     profile = get_profile(repo)
     console.print(f"[green]Added[/green] [bold]{profile.name}[/bold] ({repo}) to user models.")
     console.print("It will now appear in suggestions and can be used with --model or aliases.")
+
+
+@models_app.command("download")
+def models_download(model: str = typer.Argument(..., help="Model alias or repo to download")):
+    """Download a model (uses huggingface_hub with resume support)."""
+    from .models import download_model
+    path = download_model(model)
+    console.print(f"[green]Ready to use:[/green] {path}")
+
+
+@models_app.command("recommend")
+def models_recommend(
+    query: str = typer.Argument("coding tool use", help="What are you looking for? (e.g. 'fast coding')"),
+    max_memory: Optional[float] = typer.Option(None, "--max-memory", help="Maximum unified memory in GB"),
+):
+    """Recommend models based on your needs."""
+    from .models import recommend_models
+    recs = recommend_models(query, max_memory_gb=max_memory)
+    if not recs:
+        print_error("No good matches. Try a broader query.")
+        return
+    console.print(f"\n[bold]Recommendations for '{query}'[/bold]\n")
+    for p in recs:
+        mem = f"{p.approx_memory_gb}GB" if hasattr(p, "approx_memory_gb") and p.approx_memory_gb else "?"
+        console.print(f"  [cyan]{p.name}[/cyan]  ({p.repo_id})  memory≈{mem}")
+        console.print(f"    strengths: {', '.join(p.strengths)}")
+
+
+@app.command()
+def search(query: str = typer.Argument(..., help="Semantic search over your chat history")):
+    """Search past conversations (requires `pip install -e '.[rag]'`)."""
+    from .history_rag import search_history
+    results = search_history(query)
+    if not results:
+        print_info("No results or RAG extra not installed.")
+        return
+    for r in results:
+        console.print(f"[dim]{r.get('session_id')} / {r.get('role')}[/dim]")
+        console.print(r.get("content", "")[:400])
+        console.print("---")
 
 
 # ------------------------------------------------------------------

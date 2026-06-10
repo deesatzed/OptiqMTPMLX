@@ -236,6 +236,17 @@ The engine, tools, and persistence layers are designed to be reusable.
 
 ---
 
+## OpenAI Server, TUI, Search & More
+
+New high-leverage features (see EXPANSION_PLAN.md for full status):
+
+- `nex serve` — full OpenAI-compatible API (with model + MTP support)
+- `nex tui` — production Textual interface with real history + model switching
+- `nex search "query"` — semantic search over your past conversations
+- `nex models download` / `recommend` — one-command model management
+- `nex self` — updates, doctor, status (uv-aware)
+- Plugin system for custom tools
+
 ## Multi-Model Support (The Expansion)
 
 The app has been expanded beyond a single model. It now supports the whole ecosystem of excellent **MLX + OptiQ-4bit** (and similar high-quality MLX) models.

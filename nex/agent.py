@@ -20,6 +20,7 @@ from .tools import (
     execute_tool,
     format_observation,
     inject_tool_instructions,
+    load_plugins,
     parse_tool_call,
 )
 
@@ -49,6 +50,8 @@ def run_agent(
     Run a ReAct-style autonomous agent loop until the model produces a final answer
     without emitting a tool call, or max_steps is reached.
     """
+    load_plugins()
+
     sid = session_id or new_session_id("agent")
     record = SessionRecord(session_id=sid, model=engine.model_id)
 

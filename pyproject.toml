@@ -21,6 +21,13 @@ dependencies = [
 tui = [
     "textual>=0.80",  # Modern SOTA TUI framework for beautiful reactive terminal UIs
 ]
+server = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+]
+rag = [
+    "sentence-transformers>=3.0",  # for semantic search over history
+]
 dev = [
     "textual[dev]>=0.80",
 ]

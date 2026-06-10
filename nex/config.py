@@ -96,8 +96,28 @@ def get_effective_profile(model: Optional[str] = None) -> ModelProfile:
     profile = get_profile(model)
     overrides = get_overrides(model)
 
-    # Apply simple overrides
     for k, v in overrides.items():
         if hasattr(profile, k):
             setattr(profile, k, v)
     return profile
+
+
+def get_runtime_overrides(model: Optional[str] = None) -> dict:
+    """Get runtime overrides suitable for Engine / ChatSession (temperature, mtp, etc)."""
+    if model is None:
+        model = get_default_model() or "nex-n2-mini"
+    profile = get_profile(model)
+    overrides = get_overrides(model)
+
+    result = {
+        "temperature": profile.recommended_temperature,
+        "max_tokens": profile.recommended_max_tokens,
+        "top_p": profile.recommended_top_p if hasattr(profile, "recommended_top_p") else 0.95,
+        "enable_mtp": profile.supports_mtp,
+        "num_draft_tokens": profile.recommended_num_draft_tokens,
+    }
+    # Apply user overrides on top
+    for k in list(result.keys()):
+        if k in overrides:
+            result[k] = overrides[k]
+    return result

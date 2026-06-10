@@ -337,3 +337,48 @@ def inject_tool_instructions(system_prompt: Optional[str]) -> str:
     base = system_prompt or "You are a helpful, autonomous coding and task execution agent."
     tools_desc = get_tool_descriptions()
     return f"{base}\n\n{tools_desc}\n\nAlways use the exact tool call format when you decide to use a tool."
+
+
+# ---------------- Simple Plugin System ----------------
+
+PLUGINS_LOADED = False
+CUSTOM_TOOLS: Dict[str, ToolFunc] = {}
+
+
+def load_plugins() -> None:
+    """Load user plugins from ~/.nex/plugins/ or ./plugins/."""
+    global PLUGINS_LOADED, CUSTOM_TOOLS
+    if PLUGINS_LOADED:
+        return
+
+    import importlib.util
+    from pathlib import Path
+
+    plugin_dirs = [
+        Path.home() / ".nex" / "plugins",
+        Path("plugins"),
+    ]
+
+    for pdir in plugin_dirs:
+        if not pdir.exists():
+            continue
+        for pyfile in pdir.glob("*.py"):
+            try:
+                spec = importlib.util.spec_from_file_location(pyfile.stem, pyfile)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    if hasattr(mod, "register_tools"):
+                        mod.register_tools(TOOLS)  # or a separate registry
+                        print(f"[plugins] Loaded {pyfile}")
+            except Exception as e:
+                print(f"[plugins] Failed to load {pyfile}: {e}")
+
+    PLUGINS_LOADED = True
+
+
+# Auto-attempt to load plugins on import
+try:
+    load_plugins()
+except Exception:
+    pass

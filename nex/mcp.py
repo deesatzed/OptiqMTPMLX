@@ -267,7 +267,7 @@ def nex_list_models(
     profiles = list_profiles(family=family, size_class=size_class)
     return [
         {
-            "key": None,  # we can enhance later
+            "key": None,
             "name": p.name,
             "repo_id": p.repo_id,
             "family": p.family,
@@ -282,6 +282,16 @@ def nex_list_models(
         }
         for p in profiles
     ]
+
+
+@mcp.tool()
+def nex_search_history(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    """Semantic search over your previous conversations (requires the 'rag' extra)."""
+    try:
+        from .history_rag import search_history
+        return search_history(query, top_k=top_k)
+    except Exception as e:
+        return [{"error": str(e)}]
 
 
 @mcp.tool()

@@ -304,4 +304,25 @@ After each phase:
 
 This plan is designed to be living — update it as we learn.
 
-**Status**: Ready for execution. All ideas are grounded in the existing architecture (registry, engine, persistence, MCP, TUI skeleton, uv, self commands). No part requires throwing away current work.
+**Status**: **Significant progress made** (2025-06).
+
+**Implemented in this "crank out" pass**:
+- OpenAI-compatible server (`nex serve`) with full streaming, MTP passthrough, model selection.
+- Major TUI upgrade: real multi-turn ChatSession, persistence, live model/MTP switching, improved rendering.
+- Richer config + runtime overrides (via `get_runtime_overrides`).
+- Model download + recommend commands (`nex models download`, `nex models recommend`).
+- Semantic history search (`nex search` + `nex_search_history` MCP tool) — optional `[rag]` extra.
+- Basic plugin system (auto-loads from `~/.nex/plugins/` and `./plugins/`).
+- Shared `theme.py` stub.
+- All integrated with existing MTP, registry, agent, MCP, uv, and self commands.
+
+See code in `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py` (plugins), updated `cli.py`, `config.py`, `models.py`.
+
+**Remaining**:
+- Deeper TUI polish (Markdown + collapsible thinking panel, tool viewer).
+- Full per-model override persistence in config + UI.
+- Theming engine wired into Rich + Textual.
+- `uv tool install` / standalone binary packaging notes + example.
+- Vision support (when good models exist).
+
+The plan remains the north star for future work.
