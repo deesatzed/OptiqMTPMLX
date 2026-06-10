@@ -319,13 +319,18 @@ This plan is designed to be living — update it as we learn.
 
 See: `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py`, `nex/theme.py`, `plugins/`, updated `cli.py`/`config.py`/`models.py`/`pyproject.toml`.
 
-**Remaining / Polish** (largely addressed in final implementation):
+**Remaining / Polish** (largely addressed in final implementation + this Grok-in-the-Loop session):
 - ~~Deeper TUI (collapsible thinking via > **Thinking:** blocks in Markdown, dedicated tool execution Log pane, improved streaming/refresh).~~
 - ~~Full per-model override persistence in config + UI (set_model_override, get_runtime_overrides, CLI `models set-override`, wired to TUI/engine/server/MCP).~~
 - ~~Theming engine wired into Rich + Textual (theme.py + get_color usage in render.py and tui.py CSS/styles).~~
 - ~~`uv tool install` / standalone binary packaging guidance + example (added to README and run.sh).~~
 - ~~OpenAI server tool_calls support (standard format passthrough - custom XML tool calls are detected and emitted as OpenAI tool_calls in responses).~~
 - Vision support: `vision` flag added to ModelProfile + registry ready. `good_tool_calling` flag for future server formatting. When good MLX-VL OptiQ models land, they can be added to KNOWN_MODELS and will be supported in CLI/TUI/server (engine already model-agnostic).
+
+**Grok in the Loop** (new major initiative this session):
+- All 5 concrete next steps executed: ARCHITECTURE_MERGE.md created with full mapping + fusion plan, `grok_escalator.py` + wiring into agent (with GROK_IN_LOOP env), `mcp_cortex_adapter.py`, TUI/trace polish, demo script + major README/plan updates.
+- See `nex/grok_escalator.py`, `nex/mcp_cortex_adapter.py`, `scripts/grok_in_loop_demo.py`, and ARCHITECTURE_MERGE.md.
+- Foundation now exists to fuse this codebase with gemOptq (Cortex Sentinel + MCP-Cortex) for a production-grade auditable hybrid "Grok in the Loop" supervisor.
 
 All high-leverage items from the plan are now implemented, integrated, and pushed.
 

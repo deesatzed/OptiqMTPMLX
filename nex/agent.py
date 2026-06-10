@@ -6,6 +6,8 @@ Usage from CLI:
 
 from __future__ import annotations
 
+import json
+import os
 import time
 from dataclasses import dataclass
 from typing import List, Optional
@@ -14,6 +16,8 @@ from rich.console import Console
 from rich.panel import Panel
 
 from .engine import Engine, GenerationStats
+from .grok_escalator import GrokEscalator, get_grok_escalator
+from .mcp_cortex_adapter import get_capability_for_tool
 from .models import get_profile
 from .persistence import SessionRecord, log_turn, new_session_id, save_session
 from .tools import (
@@ -88,6 +92,9 @@ def run_agent(
     steps = 0
     all_stats: List[GenerationStats] = []
 
+    grok = get_grok_escalator()
+    use_grok_loop = os.environ.get("GROK_IN_LOOP", "false").lower() in ("1", "true", "yes")
+
     while steps < max_steps:
         steps += 1
         prompt = engine.apply_chat_template(messages, add_generation_prompt=True)
@@ -121,6 +128,35 @@ def run_agent(
             extra={"step": steps, "mode": "agent"},
         )
 
+        # Grok-in-the-Loop escalation for risky/ambiguous steps
+        if use_grok_loop and grok.is_available():
+            # Simple heuristic: escalate if we see "review", high uncertainty language, or tool call on sensitive paths
+            if any(word in full_text.lower() for word in ["review", "confirm", "danger", "production", ".env", "secret", "deploy"]):
+                console.print("[magenta]→ Escalating to Grok for structured review...[/magenta]")
+                decision = grok.escalate(
+                    intent="Agent step in autonomous task",
+                    effects=[{"operation": "tool_call", "path": "agent_action"}],
+                    local_verdict="review",
+                    local_reason=full_text[:800],
+                    trace_summary=f"Step {steps} of agent run",
+                    risk_class="yellow",
+                )
+                log_turn(
+                    session_id=sid,
+                    model="grok-escalation",
+                    role="grok",
+                    content=json.dumps(decision),
+                    extra={"step": steps, "escalated": True},
+                )
+                console.print(f"[magenta]Grok verdict: {decision.get('verdict')} - {decision.get('reason')[:120]}[/magenta]")
+
+                if decision.get("verdict") == "block":
+                    console.print(Panel("Grok recommended BLOCK. Stopping agent loop.", title="Grok Escalation", border_style="red"))
+                    break
+                if decision.get("verdict") == "review":
+                    console.print(Panel("Grok recommends human review. Pausing for now.", title="Grok Escalation", border_style="yellow"))
+                    # In full version we would wait for human input here
+
         # Check for tool call
         tool_call = parse_tool_call(full_text)
 
@@ -129,7 +165,12 @@ def run_agent(
 
         if tool_call:
             tool_name = tool_call["name"]
-            console.print(f"[yellow]→ Tool call:[/yellow] {tool_name} {tool_call.get('arguments', {})}")
+            args = tool_call.get("arguments", {})
+            console.print(f"[yellow]→ Tool call:[/yellow] {tool_name} {args}")
+
+            # MCP-Cortex style contract for policy / Grok context
+            contract = get_capability_for_tool(tool_name, args)
+            console.print(f"[dim]  Capability effects: {contract.effects} (risk: {contract.risk})[/dim]")
 
             observation = execute_tool(tool_call)
             obs_text = format_observation(tool_name, observation)
@@ -152,7 +193,6 @@ def run_agent(
             continue
 
         # No tool call — this is the final answer (or the model decided to respond)
-        # Clean up any remaining think tags for presentation
         final = full_text
         console.print(Panel(final.strip(), title=f"Final response (step {steps})", border_style="green"))
 

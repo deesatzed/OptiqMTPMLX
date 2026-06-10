@@ -259,6 +259,21 @@ New high-leverage features (see EXPANSION_PLAN.md for full status):
 - `nex self update | update-deps | status | doctor` — uv-aware self management and health checks.
 - Plugin system — easily add custom tools by dropping Python files in `~/.nex/plugins/` or `./plugins/` (example: `plugins/example_calculator.py`).
 
+### Grok in the Loop (New High-Wow Feature)
+Hybrid local + frontier reasoning:
+
+```bash
+GROK_IN_LOOP=true nex agent "Build a tiny FastAPI hello world and test it in the sandbox"
+```
+
+- Fast local OptiQ models (with MTP) do most of the work.
+- Risky/ambiguous steps escalate to real Grok (xAI) with full structured context (intent + effects + trace).
+- Full traces include local vs Grok decisions, latency, and reasoning.
+
+See `scripts/grok_in_loop_demo.py`, `nex/grok_escalator.py`, and the MCP-Cortex adapter for structured tool effects.
+
+Requires `XAI_API_KEY`. Falls back gracefully. This is the foundation for an auditable, efficient "Grok in the Loop" supervisor (see ARCHITECTURE_MERGE.md for how we are fusing with Cortex Sentinel concepts from gemOptq).
+
 ## Multi-Model Support (The Expansion)
 
 The app has been expanded beyond a single model. It now supports the whole ecosystem of excellent **MLX + OptiQ-4bit** (and similar high-quality MLX) models.
