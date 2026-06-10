@@ -1,4 +1,4 @@
-# Grok in the Loop — Demo Video Script (Elon/xAI Attention Optimized)
+# Grokkasclate — Demo Video Script (Elon/xAI Attention Optimized)
 
 **Target length**: 75-100 seconds (perfect for X/Twitter vertical + YouTube)
 
@@ -26,7 +26,7 @@ Pure local agents will do it quietly, with no real policy and no audit trail.
 
 This is the first stack that wraps the exact agents you already use every day with deterministic policy, automatic rollback, and real Grok judgment only on the calls that matter — without forcing a workflow change."
 
-**On-screen text**: "Grok in the Loop. The only hybrid that actually works."
+**On-screen text**: "Grokkasclate. The grokked escalation layer. Only this stack."
 
 ---
 
@@ -77,7 +77,13 @@ This is the only combination that gives you:
 And you can wrap real external agents (Claude Code, Codex, Gemini) under the exact same layer."
 
 **On-screen callout** (big):
-"Only OptiqMTPMLX can supervise real Claude Code sessions with Grok as the auditor and full replayable traces."
+"Only Grokkasclate can supervise real Claude Code / Cursor sessions with real ContinuousEnforcer + live TUI queue + Grok escalation + full replayable traces."
+
+<!-- Specific shots for recording:
+- 0:28-0:55: Full terminal of live PTY fake-agent writing .env → enforcer "REAL EFFECT DETECTED" + rich TUI queue panel.
+- 1:10: Clean Oversight Report panel (local t/s numbers prominent).
+- 1:30: `nex trace-gallery --redact` output + "embed this in your team docs".
+-->
 
 ---
 
@@ -108,15 +114,16 @@ The rest happens locally, under policy, with evidence."
 - Trace replay shows the external agent's output mixed with Sentinel decisions and Grok verdicts.
 
 **Voiceover / Captions**:
-"This isn't just for our local Nex agent.  
-Borrowing the battle-tested PTY runner, trust prompt injection, real-agent harness, and approval queue from gemOptq, we now wrap *real* Claude Code, Codex/Cursor, Gemini — the tools you already use every day.
+"This isn't just for our local agent.  
+Grokkasclate wraps *real* Claude Code, Codex/Cursor, Gemini — the exact tools you already use every day — using PTY + real ContinuousEnforcer (live fs observation, not vibes).
 
-`grok-claude .`  
-`grok-codex .`  
-`nex supervise claude .`
+`grokkasclate supervise claude .` (or the --install one-liner to make it permanent)
 
-Same policy. Same Grok escalation. Same full traces.  
-One auditable Grok-in-the-Loop control plane for the entire agent ecosystem."
+Same deterministic policy. Same real Grok escalation on actual effects. Same full traces + redacted gallery.
+
+One auditable control plane for the entire agent ecosystem. No workflow change for you."
+
+<!-- Asciinema note for this scene: Record the `nex supervise --install` + a short grokkasclate-wrapped run for embeddable terminal demo. See README for full asciinema instructions (task 4). -->
 
 **On-screen big**:
 "The only stack that puts Grok + Sentinel policy around Claude Code and Cursor."

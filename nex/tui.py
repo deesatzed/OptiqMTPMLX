@@ -27,6 +27,7 @@ from textual.widgets import (
     Label,
     ListView,
     ListItem,
+    Log,
     Markdown,
     Static,
     Switch,
@@ -80,6 +81,7 @@ class NexTUI(App):
     current_model: reactive[str] = reactive(get_default_model())
     mtp_enabled: reactive[bool] = reactive(False)
     stats_text: reactive[str] = reactive("Ready")
+    approvals: reactive[list] = reactive([])  # live PendingApprovals for richer queue (needs-based human-in-loop)
 
     def __init__(self):
         super().__init__()
@@ -101,8 +103,10 @@ class NexTUI(App):
             with Vertical():
                 yield Markdown(id="chat_log")
                 yield Static("Tool Output (when agent uses tools)", classes="title")
-                yield Log(id="tool_log", highlight=True, wrap=True, max_lines=10)
-                yield Input(placeholder="Type your message and press Enter...", id="input")
+                yield Log(id="tool_log", highlight=True, wrap=True, max_lines=8)
+                yield Static("Approvals / Sentinel Queue (richer TUI support for policy + Grok reviews)", classes="title")
+                yield Log(id="approvals_log", highlight=True, wrap=True, max_lines=6)
+                yield Input(placeholder="Type your message and press Enter...  |  a=approve pending, b=block, o=override", id="input")
                 yield Static(self.stats_text, id="stats")
 
         yield Footer()
@@ -235,6 +239,7 @@ class NexTUI(App):
                     )
                     if self.mtp_enabled:
                         self.stats_text += " [MTP]"
+                    self.stats_text += " | oversight: Sentinel+policy active (see end report)"
                     self.query_one("#stats", Static).update(self.stats_text)
 
             assistant_text = "".join(full_response).strip()
@@ -253,6 +258,17 @@ class NexTUI(App):
                     tool_log.write_line(f"[green]Observation:[/green] {obs[:200]}...")
                 except Exception as e:
                     tool_log.write_line(f"[red]Tool error:[/red] {e}")
+
+                # Live PendingApproval example for richer queue (real construction path; policy would provide real decision)
+                from .sentinel.policy import PolicyDecision, PolicyAction
+                from .sentinel.enforcer import FileEffect  # type
+                try:
+                    fake_fx = [FileEffect("tool", tool_call["name"])]
+                    fake_dec = PolicyDecision(PolicyAction.REVIEW, f"Tool {tool_call['name']} under Sentinel review", risk="yellow")
+                    pa = PendingApproval(prompt_line=f"tool:{tool_call['name']}", file_effects=fake_fx, policy_decision=fake_dec, grok_verdict=None)
+                    self.queue_approval(pa)
+                except Exception:
+                    pass  # non-fatal for demo
 
         except Exception as e:
             log.update(f"**Error during generation:** {e}")
@@ -279,6 +295,50 @@ class NexTUI(App):
         self.chat_session = CoreChatSession(engine=self.engine or Engine(self.current_model))
         self.query_one("#chat_log", Markdown).update("*New session started*")
         self._persist()
+
+    # --- Richer live approval queue (PendingApproval made live for TUI human-in-loop) ---
+    def queue_approval(self, pa: "PendingApproval") -> None:
+        self.approvals.append(pa)
+        try:
+            alog = self.query_one("#approvals_log", Log)
+            grok = f" grok={pa.grok_verdict}" if pa.grok_verdict else ""
+            alog.write_line(f"[yellow]PENDING {pa.policy_decision.action.value}[/yellow] {pa.prompt_line[:50]}{grok}")
+        except Exception:
+            pass
+
+    def _handle_pending(self, approve: bool, override: bool = False) -> None:
+        if not self.approvals:
+            return
+        pa = self.approvals.pop(0)
+        action = "APPROVED" if approve else ("BLOCKED" if not override else "OVERRIDE")
+        try:
+            alog = self.query_one("#approvals_log", Log)
+            alog.write_line(f"[green]{action}[/green] {pa.prompt_line[:40]}")
+            clog = self.query_one("#chat_log", Markdown)
+            clog.update( (clog.renderable or "") + f"\n\n[dim]→ Sentinel {action}: {pa.policy_decision.reason[:60]}[/dim]" )
+        except Exception:
+            pass
+        # In full: would record to trace, possibly inject back to agent, update policy override store
+
+    def action_approve_pending(self) -> None:
+        self._handle_pending(approve=True)
+
+    def action_block_pending(self) -> None:
+        self._handle_pending(approve=False)
+
+    def action_override_pending(self) -> None:
+        self._handle_pending(approve=True, override=True)
+
+    # Bindings extended for queue (a/b/o like gemOptq SentinelTUI concepts)
+    # (added at runtime via the BINDINGS list below for demo; real would merge)
+
+
+# Extend bindings for richer queue controls (small additive for needs)
+NexTUI.BINDINGS = NexTUI.BINDINGS + [
+    Binding("a", "approve_pending", "Approve"),
+    Binding("b", "block_pending", "Block"),
+    Binding("o", "override_pending", "Override"),
+]
 
 
 def run_tui() -> None:

@@ -1,6 +1,6 @@
 # OptiqMTPMLX (Nex) — Grok in the Loop
 
-**The only local AI runtime that gives you frontier Grok judgment at local OptiQ speed — with deterministic policy, continuous enforcement, and full auditable traces.**
+**Grokkasclate — the only local AI runtime that gives you frontier Grok judgment at local OptiQ speed — with deterministic policy, continuous enforcement, and full auditable traces.** (play on "grok" + "escalate")
 
 Built iteratively with Grok. Fusing the best local MLX/OptiQ inference (this repo) with Cortex Sentinel safety (policy, PTY, enforcer, traces from gemOptq) and MCP-Cortex structured contracts.
 
@@ -38,7 +38,127 @@ These are not nice-to-haves. They are the blockers preventing teams from trustin
 
 **Only this fused stack (Nex OptiQ inference + Sentinel policy/enforcement/traces + MCP-Cortex contracts + real Grok escalation + PTY supervision of external agents) can address all of them at once.**
 
-This is Grok in the Loop: the missing control layer for the agentic era.
+This is Grokkasclate: the missing control layer for the agentic era.
+
+---
+
+## Grokkasclate Explained (Like You're a College Freshman)
+
+Imagine you're a college freshman who just started coding. You have a super smart AI buddy (like Claude or Cursor) that helps you write code for class projects or your side hustle app. You type what you want in plain English ("make a website that tracks my coffee intake"), and it spits out code, edits files, and even runs commands.
+
+**The problem:** That AI buddy is like a really smart but super reckless roommate. It can do amazing things fast, but it might:
+- Accidentally delete important files.
+- Write your secret passwords into a public file.
+- Try to "deploy" something to the internet without asking.
+- Just do weird stuff because it "thought" it was helping.
+
+Right now, most AI coding tools are either:
+- Always in the cloud (slow, costs money every time you use it, and your code is sent to some company).
+- Or running on your laptop but with no real "adult supervision" — the AI can do whatever it wants to your computer.
+
+**What we built (Grokkasclate):** Think of it as a smart, trustworthy "RA" (Resident Advisor) or babysitter that sits between you and your AI coding buddy.
+
+It lets you keep using the exact same AI tools you already love (Claude Code, Cursor, Codex, Aider — whatever your favorite is). You don't have to switch apps or learn new habits.
+
+Here's what it actually does in normal-person terms:
+- It **watches in real time** what the AI is doing to your files and computer (using real low-level computer magic, not just trusting what the AI says).
+- It has **real rules** (not "the AI promised it was safe"). If the AI tries to touch secret files, production stuff, or do something sketchy, it can automatically stop it or ask you first.
+- For the really tricky decisions, it can **call in the big brain** — a powerful model from xAI called Grok — to get a second opinion with full context.
+- It has a nice screen (the TUI) where risky actions show up in a queue. You can approve, block, or override them easily, like approving app permissions on your phone.
+- It keeps a full **video-replay style record** of everything that happened (what the local fast AI did, when it asked Grok, what you approved). You can export a clean, redacted version to show your team, professor, or future employer.
+- It can **wrap your existing tools** with one command so that when you type `claude .` or `codex .` like you always do, it's now running under this safety net.
+
+It uses a fast, efficient version of AI that runs directly on your Mac laptop (using special Apple Silicon tricks for speed and battery life). Most of the work stays private and instant on your machine. Only when something actually looks risky does it reach out to the smarter (but slower/more expensive) Grok.
+
+**Why a "vibe coder" or any software engineer would want it:**
+
+If you're a vibe coder (you casually prompt AI, iterate fast, "vibe" with the tool to build stuff without super formal plans):
+- You get to keep moving at the speed of thought with your favorite AI.
+- But you stop having that background anxiety of "did it just mess up my repo?"
+- Your projects feel more "real" and shippable because there's actual guardrails.
+- You can show off clean audit logs when you apply for internships or work on group projects.
+
+If you're any SWE (even a serious one):
+- You can use the exact powerful agents your team or you already use every day (no forcing everyone to switch to a new "safe" IDE).
+- Real safety that actually watches what happens on disk, not just model-generated warnings that the AI can ignore.
+- When you're working on something important (client code, open source, personal projects with real data), you have proof of what happened and why.
+- It stays fast and cheap because the heavy lifting is local and efficient. Grok only gets called for the actual hard/risky moments.
+- For teams: everyone can have the same safety net without changing how they work.
+
+**Why it's novel (why no one else has this yet):**
+
+Most "AI safety" for coding is either:
+- The model itself saying "I'll be careful" (easy to trick or forget).
+- Or tools that make you use *their* special agent only (you lose the muscle memory and power of the one you already like).
+- Or cloud-only things that are slow and send all your code away.
+
+Grokkasclate is different because:
+- It **wraps the agents you already use** (via a clever terminal trick called PTY) so your daily workflow stays exactly the same.
+- It uses **real computer-level watching** of file changes (a "ContinuousEnforcer" that snapshots and diffs what actually changed on disk) combined with smart policy rules. This is deterministic safety, not probabilistic "the model feels good about this."
+- It does the **smart hybrid thing**: super fast, private, battery-friendly local model for 95% of the boring/safe work + escalates to real Grok (with rich context about exactly what the agent was trying to do) only for the 5% that matters.
+- It gives you **visible human control + full replayable proof**. You see the queue, you decide, and later you (or anyone) can replay the entire story with "this is exactly what the local AI decided, this is when Grok was asked, this is what you approved."
+- Everything is designed to be **reproducible and auditable** from a fresh clone — no magic, no mocks.
+
+In short: It's the first thing that lets normal coders (vibe or pro) use the AI tools they already love at full power, while actually having grown-up supervision, real records, and smart escalation to a frontier model only when the local one shouldn't be trusted alone.
+
+Think of it as training wheels that actually work, for the wild west of AI coding agents — but the training wheels are invisible most of the time and only kick in when you actually need them.
+
+---
+
+## Screenshots & Visual Demos (Placeholders)
+
+<!-- TODO: Replace these placeholders with real screenshots or asciinema casts once recorded. Suggested shots below. -->
+
+### Key Visuals to Capture
+
+**1. Live PTY + Real Enforcer Interception**
+- Run the showpiece or `nex supervise` with a risky agent.
+- Show the terminal where the "agent" tries to write .env and gets blocked live.
+- Caption: "Real filesystem observation catching a production secret leak in real time (no text scraping)."
+
+**2. TUI Approvals Queue**
+- The richer TUI with pending approvals pane.
+- Show a/b/o key hints and Grok verdict.
+- Caption: "Human-in-the-loop approvals with full context — visible in the same beautiful TUI you chat in."
+
+**3. Oversight & Efficiency Report**
+- The colored panel at end of agent/supervise run showing local tokens, t/s, grok escalations, blocks, wall time.
+- Caption: "Measurable proof: 95%+ local OptiQ speed, real policy decisions, Grok only when it matters."
+
+**4. Redacted Trace Gallery**
+- Output of `nex trace-gallery --redact`.
+- Caption: "Shareable, auditable artifact for teams, compliance, or demos. Everything replayable."
+
+**5. One-Command Permanent Wrap (`--install`)**
+- The output of `nex supervise --install`.
+- Caption: "One command to make your existing daily drivers (claude, codex, etc.) always Grokkasclate-protected."
+
+(We currently describe these since no real images are committed yet — see EXPANSION_PLAN.md history.)
+
+---
+
+## Asciinema / Terminal Recording Support
+
+For lightweight, embeddable demos (no heavy video files):
+
+1. Install asciinema: `brew install asciinema` (or equivalent for your OS).
+2. Record the showpiece cleanly:
+   ```bash
+   asciinema rec --command 'python scripts/grokkasclate_showpiece.py' grokkasclate-demo.cast
+   ```
+3. Upload the .cast to https://asciinema.org (free hosting + embed code) or self-host.
+4. Embed in README or landing page like:
+   ```markdown
+   [![asciicast](https://asciinema.org/a/XXXXX.svg)](https://asciinema.org/a/XXXXX)
+   ```
+
+The `grokkasclate_showpiece.py` now prints recording instructions at the end.
+
+This gives beautiful terminal "screenshots" that play back the exact PTY interception, queue, reports, etc.
+
+---
+
+This is Grokkasclate: the missing control layer for the agentic era.
 
 ---
 
@@ -68,6 +188,11 @@ GROK_IN_LOOP=true nex agent "Build a small FastAPI hello world in the sandbox, a
 nex supervise claude .                    # or grok-claude .
 grok-codex .                              # Cursor-style Codex under the same layer
 nex supervise codex --grok-in-loop
+nex supervise --install                   # ONE command to make claude/codex ALWAYS supervised (aliases + hooks)
+
+# Real continuous enforcement + redacted audit gallery (hardened gains)
+python scripts/hardened_supervision_showpiece.py
+nex trace-gallery --redact --out /tmp/audit-gallery.md
 
 # Drop-in for Cursor / Aider / your own tools (still gets policy + Grok + traces)
 nex serve --model qwen3.5-9b --enable-mtp
@@ -131,9 +256,10 @@ Requires Apple Silicon Mac with Metal. First use of a model will download weight
 
 - **Polished landing page**: `docs/index.html` (open directly or `cd docs && python -m http.server 8080`)
 - **Detailed showpiece brief**: `docs/showpiece/optiq-mtp-mlx.md`
+- **New hardened reproducible showpiece** (the one to run on a fresh clone): `scripts/hardened_supervision_showpiece.py`
 - **Ready-to-record video script** (90-120s, designed to make Elon/xAI sit up): `docs/grok_in_loop_demo_video_script.md`
 
-The video script and landing page are built around the *unique* "needs first" story above.
+The video script and landing page are built around the *unique* "needs first" story above. Run the hardened showpiece script after `git clone + uv install` to see the gains proven on a clean copy.
 
 ---
 
@@ -183,8 +309,9 @@ This is the feature no one else can credibly offer yet, because no one else has 
 - Full OpenAI-compatible server (with tool_calls passthrough) → addresses "use with the tools I already have" need.
 - First-class supervision of external agents (`nex supervise claude .`, `grok-claude`, `grok-codex`, etc.) borrowing PTY runner, trust prompt injection, interaction harnesses, and approval queue from gemOptq → directly solves "use the agents I already love, but make them safe and smarter."
 - GrokEscalator + GrokAugmentedAuditor (local OptiQ fast path + real xAI Grok for review cases) → addresses the hybrid intelligence need.
-- SentinelPolicy + ContinuousEnforcer (ported/adapted) with rollback → addresses the deterministic safety + recovery need.
-- Unified trace viewer (`nex trace replay`) that shows local vs Grok decisions → addresses the auditability + learning need.
+- SentinelPolicy + **real ContinuousEnforcer + FileEffectObserver** (ported/adapted, now with live fs diffs) with rollback → addresses the deterministic safety + recovery need.
+- Unified trace viewer (`nex trace replay`) + **`nex trace-gallery`** (redacted, shareable MD/HTML artifacts) that shows local vs Grok decisions → addresses the auditability + learning + team-proof need.
+- **One-command permanent wrapper** (`nex supervise --install`) + live TUI approvals queue (PendingApproval + a/b/o keys) + end-of-run Oversight & Efficiency Reports → directly solves "use the agents I already love, but make them safe, visible, and auditable forever with zero workflow change".
 - `nex models download | recommend | set-override`, `nex self update | status | doctor` (uv-aware), plugin system, history RAG — all supporting the core needs.
 
 See `ARCHITECTURE_MERGE.md` for exactly how the two repos combine to deliver capabilities no single project has.

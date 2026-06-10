@@ -326,6 +326,7 @@ See: `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py`, `nex/t
 - ~~`uv tool install` / standalone binary packaging guidance + example (added to README and run.sh).~~
 - ~~OpenAI server tool_calls support (standard format passthrough - custom XML tool calls are detected and emitted as OpenAI tool_calls in responses).~~
 - Vision support: `vision` flag added to ModelProfile + registry ready. `good_tool_calling` flag for future server formatting. When good MLX-VL OptiQ models land, they can be added to KNOWN_MODELS and will be supported in CLI/TUI/server (engine already model-agnostic).
+- Session Safety + Efficiency / Oversight Summary (live + end-of-run reports for agent + supervise paths) — implemented this session as direct response to "Features MUST be needs based" (see new DECISIONS.md + PROGRESS.md for rationale, Satz analysis, validation runs with real numbers). Addresses visibility gap for efficiency + "Grok only when matters" + "supervise my daily agents with proof". Small, additive, real.
 
 **Grok in the Loop** (new major initiative this session):
 - All 5 concrete next steps executed: ARCHITECTURE_MERGE.md created with full mapping + fusion plan, `grok_escalator.py` + wiring into agent (with GROK_IN_LOOP env), `mcp_cortex_adapter.py`, TUI/trace polish, demo script + major README/plan updates.

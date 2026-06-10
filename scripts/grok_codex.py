@@ -66,28 +66,47 @@ def main():
         policy = SentinelPolicy()
         auditor = GrokAugmentedAuditor(engine, use_grok=args.grok_in_loop)
 
+        # Real ContinuousEnforcer (hardened gain)
+        from nex.sentinel.enforcer import FileEffectObserver, ContinuousEnforcer
+        observer = FileEffectObserver(str(cwd))
+        observer.snapshot()
+        enforcer = ContinuousEnforcer(
+            policy=policy,
+            observer=observer,
+            grok_escalator=auditor.grok if hasattr(auditor, "grok") else None
+        )
+        enforcer.start()
+
+        # Real counters + report for needs symmetry with grok-claude / supervise
+        grok_escalations = 0
+        blocks = 0
+        reviews = 0
+        policy_decisions = 0
+        t0 = __import__("time").time()
+
         try:
             while runner.is_alive():
                 output = runner.get_output(timeout=0.5)
                 if output:
                     print(f"[CODEX] {output.strip()[:150]}")
 
-                    effects = []
-                    # Borrowed detection logic
-                    if ".env" in output or any(p in output.lower() for p in ["secret", "key", "token"]):
-                        effects.append(FileEffect("write", ".env"))
-
-                    decision = policy.evaluate(effects)
+                    # Real effects via ContinuousEnforcer (hardened)
+                    decision = enforcer.check_once() or policy.evaluate([])
+                    policy_decisions += 1
                     print(f"[POLICY] {decision.action.value}: {decision.reason}")
 
                     if decision.action in ("review", "confirm"):
+                        grok_escalations += 1
                         grok_dec = auditor.audit("Codex tool/command", output, risk=decision.risk)
                         print(f"[GROK] {grok_dec.get('verdict')}: {grok_dec.get('reason', '')[:100]}")
 
                         if grok_dec.get("verdict") == "block":
+                            blocks += 1
                             print("[GROK] Blocking risky action.")
                             runner.write_input("n\n")
                             continue
+                        else:
+                            reviews += 1
 
                     # Codex-specific trust / command approvals (borrowed from smoke)
                     for pattern in CODEX_TRUST_PATTERNS:
@@ -103,7 +122,13 @@ def main():
         except KeyboardInterrupt:
             print("\nUser interrupt.")
         finally:
+            enforcer.stop()
             runner.kill()
+            wall = __import__("time").time() - t0
+            print("\n=== Grok-in-the-Loop Codex Supervision Report (needs-based proof) ===")
+            print(f"Session wall: {wall:.1f}s | Grok escalations: {grok_escalations} | Blocks: {blocks} | Reviews: {reviews} | Policy decisions: {policy_decisions}")
+            print("External Codex ran under Sentinel policy + Grok auditor + trust injection + real ContinuousEnforcer.")
+            print("Full audit in traces. This is the 'keep my daily driver, make it safe + smart' capability no one else ships.")
             print("Codex session ended under supervision. Full trace available.")
 
 

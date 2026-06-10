@@ -143,23 +143,29 @@ def run_supervised_agent(agent_command: str, policy, grok_auditor, tui_callback=
     """
     High-level supervisor using PTY + policy + Grok.
     This is the "borrow" from gemOptq's real_agent_smoke + Pty + TUI concepts.
+    Now supports real ContinuousEnforcer (pass observer/enforcer from caller for fs-observed effects).
     """
+    from .enforcer import FileEffectObserver, ContinuousEnforcer
     runner = PtyAgentRunner(agent_command, cwd=cwd)
     runner.start()
 
+    observer = FileEffectObserver(cwd or ".")
+    observer.snapshot()
+    enforcer = ContinuousEnforcer(policy=policy, observer=observer, grok_escalator=grok_auditor.grok if hasattr(grok_auditor, "grok") else None)
+
     try:
+        enforcer.start()
         while runner.is_alive():
             output = runner.get_output()
             if output:
-                # Detect prompts, effects, feed to policy + grok_auditor
-                # (simplified here; full would use the ContinuousEnforcer + TUI)
-                decision = policy.evaluate([])  # would pass real effects
-                if decision.action == "review":
+                # Real effects from observer + enforcer (not just text)
+                decision = enforcer.check_once() or policy.evaluate([])
+                if decision.action in (getattr(decision, "action", None),) and str(decision.action).lower() in ("review", "confirm"):
                     grok_dec = grok_auditor.audit("agent action", output)
                     if tui_callback:
                         tui_callback(decision, grok_dec, output)
                     # Wait for human or auto based on policy
                 # Inject input if needed based on policy
-            # In real: integrate with ContinuousEnforcer
     finally:
+        enforcer.stop()
         runner.kill()

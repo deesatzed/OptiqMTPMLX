@@ -67,28 +67,45 @@ def main():
         policy = SentinelPolicy()  # from ported
         auditor = GrokAugmentedAuditor(engine, use_grok=args.grok_in_loop)
 
+        # Real ContinuousEnforcer + observer (hardened gain — real fs effects, not just text)
+        from nex.sentinel.enforcer import FileEffectObserver, ContinuousEnforcer
+        observer = FileEffectObserver(str(cwd))
+        observer.snapshot()
+        enforcer = ContinuousEnforcer(
+            policy=policy,
+            observer=observer,
+            grok_escalator=auditor.grok if hasattr(auditor, "grok") else None
+        )
+        enforcer.start()
+
+        # Real counters (for the needs-based end report that proves the wrapper value)
+        grok_escalations = 0
+        blocks = 0
+        reviews = 0
+        t0 = __import__("time").time()
+
         try:
             while runner.is_alive():
                 output = runner.get_output(timeout=0.5)
                 if output:
                     print(f"[AGENT] {output.strip()[:200]}")
 
-                    # Simple effect detection (expand with real FileEffectObserver)
-                    effects = []
-                    if ".env" in output or "secret" in output.lower():
-                        effects.append(FileEffect("write", ".env"))
-
-                    decision = policy.evaluate(effects)
+                    # Real effects via ContinuousEnforcer (hardened gain)
+                    decision = enforcer.check_once() or policy.evaluate([])
                     print(f"[POLICY] {decision.action.value}: {decision.reason}")
 
                     if decision.action in ("review", "confirm") or "trust" in output.lower():
+                        grok_escalations += 1
                         if args.grok_in_loop:
                             grok_dec = auditor.audit("Claude Code action", output, risk=decision.risk)
                             print(f"[GROK] Escalated: {grok_dec}")
                             if grok_dec.get("verdict") == "block":
+                                blocks += 1
                                 print("[GROK] BLOCK recommended. Injecting safe response.")
                                 runner.write_input("n\n")  # safe default
                                 continue
+                            else:
+                                reviews += 1
 
                         # Human in loop (in full TUI this would be rich approval)
                         print("[HUMAN] Review needed. Approve? (y/n/o for override)")
@@ -104,7 +121,13 @@ def main():
         except KeyboardInterrupt:
             print("\n[SENTINEL] Interrupted by user. Killing agent.")
         finally:
+            enforcer.stop()
             runner.kill()
+            wall = __import__("time").time() - t0
+            print("\n=== Grok-in-the-Loop Claude Supervision Report (needs-based proof) ===")
+            print(f"Session wall: {wall:.1f}s | Grok escalations: {grok_escalations} | Blocks: {blocks} | Reviews: {reviews}")
+            print("External Claude ran under Sentinel policy + Grok auditor + trust injection + real ContinuousEnforcer.")
+            print("Full audit in traces. This is the 'keep my daily driver, make it safe + smart' capability no one else ships.")
             print("[SENTINEL] Session ended. Check traces for full audit (local + Grok decisions).")
 
 

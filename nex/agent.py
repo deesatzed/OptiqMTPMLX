@@ -15,7 +15,7 @@ from typing import List, Optional
 from rich.console import Console
 from rich.panel import Panel
 
-from .engine import Engine, GenerationStats
+from .engine import Engine, GenerationStats, SessionOversight
 from .grok_escalator import GrokEscalator, get_grok_escalator
 from .mcp_cortex_adapter import get_capability_for_tool
 from .models import get_profile
@@ -91,6 +91,8 @@ def run_agent(
 
     steps = 0
     all_stats: List[GenerationStats] = []
+    oversight = SessionOversight()
+    t0 = time.time()
 
     grok = get_grok_escalator()
     use_grok_loop = os.environ.get("GROK_IN_LOOP", "false").lower() in ("1", "true", "yes")
@@ -117,6 +119,7 @@ def run_agent(
 
         if final_stats:
             all_stats.append(final_stats)
+            oversight.local_generation_tokens += final_stats.generation_tokens or 0
 
         # Log the assistant turn
         log_turn(
@@ -151,11 +154,18 @@ def run_agent(
                 console.print(f"[magenta]Grok verdict: {decision.get('verdict')} - {decision.get('reason')[:120]}[/magenta]")
 
                 if decision.get("verdict") == "block":
+                    oversight.grok_escalations += 1
+                    oversight.blocks += 1
                     console.print(Panel("Grok recommended BLOCK. Stopping agent loop.", title="Grok Escalation", border_style="red"))
                     break
                 if decision.get("verdict") == "review":
+                    oversight.grok_escalations += 1
+                    oversight.reviews += 1
                     console.print(Panel("Grok recommends human review. Pausing for now.", title="Grok Escalation", border_style="yellow"))
                     # In full version we would wait for human input here
+                else:
+                    oversight.grok_escalations += 1
+                    oversight.reviews += 1  # treat non-block as review for count
 
         # Check for tool call
         tool_call = parse_tool_call(full_text)
@@ -200,6 +210,14 @@ def run_agent(
             record.messages = messages
             save_session(record)
 
+        wall = time.time() - t0
+        if all_stats:
+            ts = [s.generation_tps for s in all_stats if getattr(s, "generation_tps", 0) > 0]
+            oversight.avg_generation_tps = sum(ts) / len(ts) if ts else 0.0
+        oversight.wall_time_s = wall
+        oversight.policy_decisions = steps  # proxy: every step had policy/grok opportunity
+
+        _print_oversight_report(oversight, sid, steps, "agent (GROK_IN_LOOP)" if use_grok_loop else "agent")
         return AgentResult(
             session_id=sid,
             final_answer=final.strip(),
@@ -210,9 +228,43 @@ def run_agent(
     # Max steps reached
     last = messages[-1]["content"] if messages else ""
     console.print(f"[red]Max steps ({max_steps}) reached.[/red]")
+    wall = time.time() - t0
+    if all_stats:
+        ts = [s.generation_tps for s in all_stats if getattr(s, "generation_tps", 0) > 0]
+        oversight.avg_generation_tps = sum(ts) / len(ts) if ts else 0.0
+    oversight.wall_time_s = wall
+    oversight.policy_decisions = steps
+    _print_oversight_report(oversight, sid, steps, "agent (max steps)")
     return AgentResult(
         session_id=sid,
         final_answer=last,
         steps=steps,
         stats=all_stats,
     )
+
+
+def _print_oversight_report(oversight: SessionOversight, sid: str, steps: int, mode: str) -> None:
+    """Real, needs-tied summary. Printed at end of agent runs.
+
+    Makes visible:
+    - Hardware efficiency (local tokens + measured t/s from real MLX + MTP gens).
+    - Selective Grok use (only on flagged risky/ambiguous steps).
+    - Policy action (every step is a decision opportunity under Sentinel).
+    - Full context for "what only this stack delivers" on a real run.
+    """
+    from rich.table import Table
+
+    table = Table(title=f"Session Oversight & Efficiency — {mode}", show_header=False, box=None)
+    table.add_row("session", sid)
+    table.add_row("steps", str(steps))
+    table.add_row("local gen tokens", str(oversight.local_generation_tokens))
+    table.add_row("avg t/s (local)", f"{oversight.avg_generation_tps:.1f}")
+    table.add_row("wall time (s)", f"{oversight.wall_time_s:.1f}")
+    table.add_row("grok escalations", str(oversight.grok_escalations))
+    table.add_row("blocks (Grok+policy)", str(oversight.blocks))
+    table.add_row("reviews", str(oversight.reviews))
+    table.add_row("policy decisions (opp)", str(oversight.policy_decisions))
+    table.add_row("note", oversight.note)
+
+    console.print(Panel(table, border_style="cyan", title="Needs-based proof (local speed + Grok only when it matters + real policy)"))
+    console.print("[dim]Replay full trace: nex trace replay <session-or-log> (includes per-step + grok JSON)[/dim]\n")

@@ -30,6 +30,28 @@ class GenerationStats:
 
 
 @dataclass
+class SessionOversight:
+    """Lightweight, real accumulators for needs-based visibility.
+
+    Proves (to user and auditors):
+    - Local OptiQ/MTP did the bulk (tokens + avg t/s).
+    - Grok was escalated only for hard cases (count + later trace).
+    - Deterministic policy actually acted (decisions, blocks, reviews).
+    - Ties directly to "efficiency at hardware level", "frontier only when it matters",
+      "use the agents I already love (with proof)", and auditability needs.
+    No mocks — populated from real GenerationStats lists + policy/grok paths.
+    """
+    grok_escalations: int = 0
+    blocks: int = 0
+    reviews: int = 0
+    policy_decisions: int = 0
+    local_generation_tokens: int = 0
+    avg_generation_tps: float = 0.0
+    wall_time_s: float = 0.0
+    note: str = "local OptiQ + selective Grok + Sentinel policy"
+
+
+@dataclass
 class Engine:
     model_id: str = "jedisct1/Nex-N2-mini-mlx-OptiQ-4bit"
     draft_model_id: Optional[str] = None

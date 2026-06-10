@@ -59,9 +59,32 @@ This is not "local LLM + some safety." This is the deliberate fusion of the best
 
 - Modern single-file landing page: `docs/index.html`
 - Detailed showpiece brief: `docs/showpiece/optiq-mtp-mlx.md`
+- **New hardened reproducible showpiece script** (run this on any fresh clone to prove the gains): `scripts/hardened_supervision_showpiece.py`
 - 90-120s demo video script optimized for attention: `docs/grok_in_loop_demo_video_script.md`
 - Full architecture fusion document: `ARCHITECTURE_MERGE.md`
 - Working code with the hybrid loop, policy, contracts, traces, TUI, and servers (tested on fresh clone from GitHub).
+
+## New Hardened Showpiece Idea (2025 — "Reproducible Hardened Daily Driver")
+
+**The Need**: Reviewers, teams, compliance, and xAI stakeholders need to be able to take a *fresh git clone* and, with essentially one command on their own machine, see concrete proof that:
+- The exact agents they (or their users) already use daily can be permanently wrapped.
+- Real filesystem effects are now observed continuously (not guessed from terminal text).
+- Approvals, Grok reviews, efficiency numbers, and policy decisions are visible and exportable as clean redacted artifacts.
+- All of it is reproducible by anyone, anywhere, on a clean checkout.
+
+**The Showpiece**:
+Run `python scripts/hardened_supervision_showpiece.py` after a standard clone + `uv pip install -e '.[tui]'`.
+
+It demonstrates end-to-end on the clone copy:
+1. Real `FileEffectObserver` + `ContinuousEnforcer` catching actual file creates/modifies in a workspace.
+2. Live `PendingApproval` construction and (in TUI) the richer queue pane + a/b/o controls.
+3. Full oversight + efficiency report at the end of agent/supervise flows (tokens, t/s, grok count, blocks, wall time).
+4. `nex trace-gallery --redact` producing a shareable, redacted, human-readable audit table.
+5. The `--install` path that makes the daily driver permanent.
+
+This is the artifact you hand to an auditor or post on X: "Here is the exact output from a clean clone on an M4. No special setup. No mocks."
+
+It directly hardens the "Extra Big Wow" claim and the "Make Elon Proud" reproducibility/audit story.
 
 ## How to Experience It
 
