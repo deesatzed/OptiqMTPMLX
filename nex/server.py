@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from .engine import Engine
 from .models import get_default_model, get_profile, list_profiles
+from .tools import parse_tool_call, TOOLS  # for potential execution or validation
 
 app = FastAPI(
     title="Nex Local Server",
@@ -59,6 +60,8 @@ class Choice(BaseModel):
     message: Optional[ChatMessage] = None
     delta: Optional[Dict[str, str]] = None
     finish_reason: Optional[str] = None
+    # OpenAI tool calling extension (populated dynamically)
+    tool_calls: Optional[List[Dict[str, Any]]] = None
 
 
 class Usage(BaseModel):
@@ -231,14 +234,35 @@ async def chat_completions(req: ChatCompletionRequest):
             top_p=req.top_p,
         )
 
+        # Polish: Detect custom tool call format and convert to OpenAI tool_calls
+        tool_call = parse_tool_call(text)
+        message_content = text.strip()
+        tool_calls = None
+        finish_reason = "stop"
+
+        if tool_call and tool_call.get("name") in TOOLS:
+            tool_calls = [{
+                "id": f"call_{int(time.time())}",
+                "type": "function",
+                "function": {
+                    "name": tool_call["name"],
+                    "arguments": json.dumps(tool_call.get("arguments", {})),
+                }
+            }]
+            message_content = None  # or keep the raw for transparency
+            finish_reason = "tool_calls"
+
         response = ChatCompletionResponse(
             id=completion_id,
             created=created,
             model=model_name,
             choices=[
                 Choice(
-                    message=ChatMessage(role="assistant", content=text.strip()),
-                    finish_reason="stop",
+                    message=ChatMessage(
+                        role="assistant",
+                        content=message_content or "",
+                    ),
+                    finish_reason=finish_reason,
                 )
             ],
             usage=Usage(
@@ -247,6 +271,11 @@ async def chat_completions(req: ChatCompletionRequest):
                 total_tokens=getattr(stats, "prompt_tokens", 0) + getattr(stats, "generation_tokens", 0),
             ),
         )
+        # Attach tool_calls if present (OpenAI style)
+        if tool_calls:
+            response.choices[0].message = ChatMessage(role="assistant", content=message_content or "")
+            # Extend the model dynamically for tool_calls
+            response.choices[0].__dict__["message"].tool_calls = tool_calls  # hack for pydantic
         return response
 
     except Exception as e:

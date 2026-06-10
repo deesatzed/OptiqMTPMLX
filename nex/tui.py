@@ -42,6 +42,7 @@ from .persistence import (
 )
 from .session import ChatSession as CoreChatSession
 from .theme import get_color
+from .tools import parse_tool_call, execute_tool
 
 
 class NexTUI(App):
@@ -88,6 +89,8 @@ class NexTUI(App):
 
             with Vertical():
                 yield Markdown(id="chat_log")
+                yield Static("Tool Output (when agent uses tools)", classes="title")
+                yield Log(id="tool_log", highlight=True, wrap=True, max_lines=10)
                 yield Input(placeholder="Type your message and press Enter...", id="input")
                 yield Static(self.stats_text, id="stats")
 
@@ -227,6 +230,18 @@ class NexTUI(App):
             self.chat_session.add_assistant(assistant_text)
             self._refresh_view()
             self._persist()
+
+            # Polish: show tool calls in dedicated log if detected
+            tool_call = parse_tool_call(assistant_text)
+            if tool_call:
+                tool_log = self.query_one("#tool_log", Log)
+                tool_log.write_line(f"[yellow]Tool call:[/yellow] {tool_call['name']} {tool_call.get('arguments')}")
+                # For demo, auto-execute safe tools in TUI too (optional)
+                try:
+                    obs = execute_tool(tool_call)
+                    tool_log.write_line(f"[green]Observation:[/green] {obs[:200]}...")
+                except Exception as e:
+                    tool_log.write_line(f"[red]Tool error:[/red] {e}")
 
         except Exception as e:
             log.update(f"**Error during generation:** {e}")

@@ -112,12 +112,29 @@ def get_runtime_overrides(model: Optional[str] = None) -> dict:
     result = {
         "temperature": profile.recommended_temperature,
         "max_tokens": profile.recommended_max_tokens,
-        "top_p": profile.recommended_top_p if hasattr(profile, "recommended_top_p") else 0.95,
+        "top_p": getattr(profile, "recommended_top_p", 0.95),
         "enable_mtp": profile.supports_mtp,
         "num_draft_tokens": profile.recommended_num_draft_tokens,
+        "vision": profile.vision,
     }
     # Apply user overrides on top
     for k in list(result.keys()):
         if k in overrides:
             result[k] = overrides[k]
     return result
+
+
+def set_model_override(model: str, key: str, value: Any) -> None:
+    """Persist a per-model override (e.g. temperature, enable_mtp)."""
+    profile = get_profile(model)
+    cfg = load_config()
+    overrides = cfg.setdefault("overrides", {})
+    model_over = overrides.setdefault(profile.repo_id, {})
+    model_over[key] = value
+    save_config(cfg)
+
+
+def get_all_overrides() -> dict:
+    """Return the full overrides dict for UI/inspection."""
+    cfg = load_config()
+    return cfg.get("overrides", {})

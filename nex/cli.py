@@ -31,6 +31,8 @@ from .config import (
     get_user_models,
     load_config,
     set_default_model as cfg_set_default,
+    set_model_override,
+    get_all_overrides,
 )
 
 import shutil
@@ -695,6 +697,26 @@ def models_recommend(
         mem = f"{p.approx_memory_gb}GB" if hasattr(p, "approx_memory_gb") and p.approx_memory_gb else "?"
         console.print(f"  [cyan]{p.name}[/cyan]  ({p.repo_id})  memory≈{mem}")
         console.print(f"    strengths: {', '.join(p.strengths)}")
+
+
+@models_app.command("set-override")
+def models_set_override(
+    model: str = typer.Argument(..., help="Model alias or repo"),
+    key: str = typer.Argument(..., help="Override key (temperature, max_tokens, enable_mtp, etc.)"),
+    value: str = typer.Argument(..., help="Value (will be parsed as float/bool if possible)"),
+):
+    """Persist a per-model override."""
+    # Parse value
+    parsed = value
+    if value.lower() in ("true", "false"):
+        parsed = value.lower() == "true"
+    else:
+        try:
+            parsed = float(value) if "." in value else int(value)
+        except ValueError:
+            pass
+    set_model_override(model, key, parsed)
+    console.print(f"[green]Set override[/green] {key}={parsed} for {get_profile(model).name}")
 
 
 @app.command()

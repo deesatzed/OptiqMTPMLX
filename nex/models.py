@@ -63,6 +63,12 @@ class ModelProfile:
     # Memory estimate (for recommender / warnings)
     approx_memory_gb: Optional[float] = None
 
+    # Vision/multimodal support (future-proofing for OptiQ-VL models)
+    vision: bool = False
+
+    # Whether the model has good native tool calling (affects server formatting)
+    good_tool_calling: bool = True
+
 
 # =============================================================================
 # Curated high-quality OptiQ (and close relatives) registry

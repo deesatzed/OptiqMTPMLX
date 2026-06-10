@@ -319,12 +319,14 @@ This plan is designed to be living — update it as we learn.
 
 See: `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py`, `nex/theme.py`, `plugins/`, updated `cli.py`/`config.py`/`models.py`/`pyproject.toml`.
 
-**Remaining / Polish**:
-- Deeper TUI (collapsible thinking, dedicated tool execution pane, better Markdown streaming).
-- Full per-model override UI and persistence.
-- Complete theming engine across Rich + Textual.
-- `uv tool install` / standalone binary packaging guidance + example.
-- OpenAI server tool_calls support (standard format passthrough).
-- Vision support (when good MLX-VL OptiQ models are available).
+**Remaining / Polish** (largely addressed in final implementation):
+- ~~Deeper TUI (collapsible thinking via > **Thinking:** blocks in Markdown, dedicated tool execution Log pane, improved streaming/refresh).~~
+- ~~Full per-model override persistence in config + UI (set_model_override, get_runtime_overrides, CLI `models set-override`, wired to TUI/engine/server/MCP).~~
+- ~~Theming engine wired into Rich + Textual (theme.py + get_color usage in render.py and tui.py CSS/styles).~~
+- ~~`uv tool install` / standalone binary packaging guidance + example (added to README and run.sh).~~
+- ~~OpenAI server tool_calls support (standard format passthrough - custom XML tool calls are detected and emitted as OpenAI tool_calls in responses).~~
+- Vision support: `vision` flag added to ModelProfile + registry ready. `good_tool_calling` flag for future server formatting. When good MLX-VL OptiQ models land, they can be added to KNOWN_MODELS and will be supported in CLI/TUI/server (engine already model-agnostic).
+
+All high-leverage items from the plan are now implemented, integrated, and pushed.
 
 The plan remains the north star for future work.

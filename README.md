@@ -219,18 +219,30 @@ nex-n2-mlx-run/
 ## Development / Hacking
 
 ```bash
+# Preferred (fast with uv)
+uv venv .venv
+uv pip install -e '.[server,tui,rag]'
+
+# Or classic
 source .venv/bin/activate
-pip install -e .
+pip install -e '.[server,tui,rag]'
 
-# Chat with extra logging visible
-nex chat --temperature 0.3
-
-# Test agent
-nex agent "Write a small script that prints the first 20 Fibonacci numbers and save it as fib.py"
-
-# Launch MCP server in foreground for testing
-python -m nex.mcp
+# Run
+nex tui
+nex serve
+nex chat --model qwen3.5-9b --enable-mtp
 ```
+
+### uv tool install (recommended for daily use)
+```bash
+uv tool install --from git+https://github.com/deesatzed/OptiqMTPMLX.git --python 3.12 nex-cli
+# Then just `nex` anywhere
+```
+
+### Standalone / binary notes
+- Use `uv build` for wheel.
+- For single binary: `pip install pyinstaller && pyinstaller --onefile -n nex --add-data "nex:nex" -m nex.cli`
+- Or use `uvx` / `uv tool` for isolated runs without full install.
 
 The engine, tools, and persistence layers are designed to be reusable.
 
