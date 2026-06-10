@@ -1,0 +1,779 @@
+"""Typer CLI for the Nex standalone app.
+
+Enhanced with:
+- Default conversation persistence (sessions/ + auto-resume)
+- JSONL logging
+- Agent mode with safe tools (list_dir, read/write/run_python/shell)
+- MCP server launcher (`nex mcp`)
+- Better UX and loading feedback
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+import typer
+from rich.prompt import Prompt
+
+from . import DEFAULT_MODEL
+from .agent import run_agent
+from .engine import Engine
+from .models import (
+    KNOWN_MODELS,
+    get_default_model,
+    get_profile,
+    list_profiles,
+    suggest_similar,
+)
+from .config import (
+    add_user_model,
+    get_config_path,
+    get_user_models,
+    load_config,
+    set_default_model as cfg_set_default,
+)
+
+import shutil
+import subprocess
+import sys
+from .persistence import (
+    SessionRecord,
+    get_latest_session,
+    list_sessions,
+    load_session,
+    log_turn,
+    new_session_id,
+    save_session,
+)
+from .render import (
+    ThinkAwareStreamer,
+    console,
+    print_assistant_header,
+    print_error,
+    print_info,
+    print_user_prompt,
+    print_welcome,
+)
+from .session import ChatSession
+
+app = typer.Typer(
+    name="nex",
+    help="Standalone CLI for jedisct1/Nex-N2-mini-mlx-OptiQ-4bit (mlx-lm on Apple Silicon) — with agent tools and MCP server",
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+
+
+def _resolve_model(model: Optional[str]) -> str:
+    """Resolve user-provided model string (alias, partial, repo, or None) to a real repo id."""
+    if model is None or model.strip() == "":
+        return get_default_model()
+    profile = get_profile(model)
+    return profile.repo_id
+
+
+def _get_engine(
+    model: Optional[str] = None,
+    enable_mtp: bool = False,
+    draft_model: Optional[str] = None,
+    num_draft_tokens: int = 3,
+) -> Engine:
+    resolved = _resolve_model(model)
+    profile = get_profile(resolved)
+
+    # Resolve draft for MTP
+    final_draft = draft_model
+    if enable_mtp and not final_draft:
+        if profile and profile.supports_mtp and profile.mtp_repo_id:
+            final_draft = profile.mtp_repo_id
+        elif profile and profile.mtp_repo_id:
+            final_draft = profile.mtp_repo_id
+
+    eng = Engine(
+        model_id=resolved,
+        draft_model_id=final_draft,
+        num_draft_tokens=num_draft_tokens,
+    )
+    return eng
+
+
+# ------------------------------------------------------------------
+# Main / default
+# ------------------------------------------------------------------
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    model: str = typer.Option(
+        None,
+        "--model",
+        "-m",
+        help="HF repo, alias (qwen9b, gemma12b, nemotron, nex, ...), or local path. See `nex models list`.",
+    ),
+    max_tokens: int = typer.Option(1024, "--max-tokens", "-n"),
+    temperature: float = typer.Option(0.7, "--temperature", "-t"),
+    top_p: float = typer.Option(0.95, "--top-p"),
+    system: Optional[str] = typer.Option(None, "--system", "-s"),
+    no_stream: bool = typer.Option(False, "--no-stream"),
+    session: Optional[str] = typer.Option(None, "--session", help="Named session to resume or create"),
+    resume: bool = typer.Option(False, "--resume", help="Resume the most recent session"),
+    no_persist: bool = typer.Option(False, "--no-persist", help="Do not save/load session history"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp", help="Enable MTP / speculative decoding (Multi-Token Prediction) for ~1.3-1.5x faster generation when supported."),
+    draft_model: Optional[str] = typer.Option(None, "--draft-model", help="Explicit MTP draft model repo id (e.g. the -MTP variant)."),
+    num_draft_tokens: int = typer.Option(3, "--num-draft-tokens", help="Number of draft tokens for MTP speculative decoding."),
+):
+    """Default action is interactive chat (with smart session persistence)."""
+    if ctx.invoked_subcommand is None:
+        chat(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            system=system,
+            no_stream=no_stream,
+            session=session,
+            resume=resume,
+            no_persist=no_persist,
+            enable_mtp=enable_mtp,
+            draft_model=draft_model,
+            num_draft_tokens=num_draft_tokens,
+        )
+
+
+# ------------------------------------------------------------------
+# chat
+# ------------------------------------------------------------------
+
+@app.command()
+def chat(
+    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    max_tokens: int = typer.Option(1024, "--max-tokens", "-n"),
+    temperature: float = typer.Option(0.7, "--temperature", "-t"),
+    top_p: float = typer.Option(0.95, "--top-p"),
+    system: Optional[str] = typer.Option(None, "--system", "-s"),
+    no_stream: bool = typer.Option(False, "--no-stream"),
+    session: Optional[str] = typer.Option(None, "--session", help="Named session id"),
+    resume: bool = typer.Option(False, "--resume", help="Auto-resume latest session"),
+    no_persist: bool = typer.Option(False, "--no-persist"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp"),
+    draft_model: Optional[str] = typer.Option(None, "--draft-model"),
+    num_draft_tokens: int = typer.Option(3, "--num-draft-tokens"),
+):
+    """Interactive multi-turn chat (persisted by default)."""
+    engine = _get_engine(model, enable_mtp, draft_model, num_draft_tokens)
+
+    # Resolve session
+    rec: Optional[SessionRecord] = None
+    sid = session
+
+    if resume and not sid:
+        rec = get_latest_session()
+        if rec:
+            sid = rec.session_id
+            print_info(f"Resuming latest session: {sid}")
+
+    if sid:
+        rec = load_session(sid) or SessionRecord(session_id=sid, model=model)
+
+    if rec is None:
+        sid = new_session_id("chat")
+        rec = SessionRecord(session_id=sid, model=model)
+
+    # Apply incoming system if provided
+    if system:
+        rec.system_prompt = system
+
+    # Create runtime ChatSession
+    chat_session = ChatSession(
+        engine=engine,
+        system_prompt=rec.system_prompt,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+    )
+    # Seed history if we loaded one
+    if rec.messages:
+        chat_session.messages = list(rec.messages)
+
+    resolved_model = _resolve_model(model)
+    profile = get_profile(resolved_model)
+    mtp_note = " + MTP" if (enable_mtp or draft_model) else ""
+    print_welcome(f"{profile.name}{mtp_note} ({resolved_model})")
+    console.print(f"[dim]Session:[/dim] [bold]{sid}[/bold]  [dim](persisted: {not no_persist})[/dim]")
+    if enable_mtp or draft_model:
+        console.print("[dim]MTP / speculative decoding enabled[/dim]")
+    if rec.system_prompt:
+        print_info(f"System: {rec.system_prompt[:90]}{'...' if len(rec.system_prompt) > 90 else ''}")
+
+    streamer = ThinkAwareStreamer(show_thinking=True)
+
+    try:
+        while True:
+            try:
+                user_input = print_user_prompt()
+            except (EOFError, KeyboardInterrupt):
+                if not no_persist:
+                    rec.messages = chat_session.messages
+                    save_session(rec)
+                console.print("\n[dim]Goodbye. Session saved.[/dim]")
+                break
+
+            if not user_input or not user_input.strip():
+                continue
+
+            cmd = user_input.strip()
+            if cmd.startswith("/"):
+                handled = _handle_command(cmd, chat_session, engine, rec, no_persist)
+                if handled == "quit":
+                    break
+                continue
+
+            # Normal turn
+            chat_session.add_user(cmd)
+
+            # Log user
+            log_turn(session_id=sid, model=model, role="user", content=cmd)
+
+            print_assistant_header()
+
+            if no_stream:
+                response = chat_session.generate_once()
+                streamer = ThinkAwareStreamer(show_thinking=True)
+                streamer.feed(response)
+                streamer.flush()
+                console.print()
+                if chat_session.last_stats:
+                    print_info(f"stats: {chat_session.last_stats.generation_tokens} tok @ {chat_session.last_stats.generation_tps:.1f} t/s")
+            else:
+                parts = []
+                for chunk, stats in chat_session.generate_stream():
+                    if chunk:
+                        parts.append(chunk)
+                        streamer.feed(chunk)
+                streamer.flush()
+                console.print()
+                assistant_text = "".join(parts)
+                chat_session.add_assistant(assistant_text)
+
+                log_turn(
+                    session_id=sid,
+                    model=model,
+                    role="assistant",
+                    content=assistant_text,
+                    stats=chat_session.last_stats.__dict__ if chat_session.last_stats else None,
+                )
+
+                if chat_session.last_stats:
+                    print_info(
+                        f"{chat_session.last_stats.generation_tokens} tokens @ "
+                        f"{chat_session.last_stats.generation_tps:.1f} t/s | peak {chat_session.last_stats.peak_memory_gb:.1f} GB"
+                    )
+
+            # Persist after every turn unless disabled
+            if not no_persist:
+                rec.messages = chat_session.messages
+                rec.system_prompt = chat_session.system_prompt
+                rec.params.update({
+                    "temperature": chat_session.temperature,
+                    "top_p": chat_session.top_p,
+                    "max_tokens": chat_session.max_tokens,
+                })
+                save_session(rec)
+
+    except KeyboardInterrupt:
+        if not no_persist:
+            rec.messages = chat_session.messages
+            save_session(rec)
+        console.print("\n[dim]Interrupted. Session saved.[/dim]")
+
+
+def _handle_command(
+    cmd: str,
+    session: ChatSession,
+    engine: Engine,
+    rec: SessionRecord,
+    no_persist: bool,
+) -> Optional[str]:
+    parts = cmd.split(maxsplit=1)
+    verb = parts[0].lower()
+    arg = parts[1] if len(parts) > 1 else ""
+
+    if verb in ("/quit", "/exit", "/q"):
+        if not no_persist:
+            rec.messages = session.messages
+            save_session(rec)
+        return "quit"
+
+    if verb == "/help":
+        console.print(
+            "\n[bold]Chat commands[/bold]\n"
+            "  /help                 This help\n"
+            "  /clear                Clear current conversation (in-memory)\n"
+            "  /system <text>        Set system prompt for this session\n"
+            "  /temp <float>         Change temperature\n"
+            "  /maxtokens <int>      Change max new tokens\n"
+            "  /stats                Last generation stats\n"
+            "  /save [file]          Export current history to JSON\n"
+            "  /load <file>          Import history from JSON (in-memory)\n"
+            "  /sessions             List recent persisted sessions\n"
+            "  /resume [id]          Switch to another session (or latest)\n"
+            "  /quit                 Exit (session is auto-saved)\n"
+        )
+        return None
+
+    if verb == "/clear":
+        session.reset()
+        print_info("In-memory history cleared (persisted copy unchanged until next turn).")
+        return None
+
+    if verb == "/system":
+        if arg:
+            session.set_system(arg)
+            rec.system_prompt = session.system_prompt
+            print_info("System prompt updated for this session.")
+        else:
+            print_info(f"Current system: {session.system_prompt or '(none)'}")
+        return None
+
+    if verb == "/temp":
+        try:
+            session.temperature = float(arg)
+            print_info(f"Temperature = {session.temperature}")
+        except ValueError:
+            print_error("Usage: /temp 0.3")
+        return None
+
+    if verb == "/maxtokens":
+        try:
+            session.max_tokens = int(arg)
+            print_info(f"max_tokens = {session.max_tokens}")
+        except ValueError:
+            print_error("Usage: /maxtokens 2048")
+        return None
+
+    if verb == "/stats":
+        if session.last_stats:
+            s = session.last_stats
+            print_info(f"prompt={s.prompt_tokens} gen={s.generation_tokens} tps={s.generation_tps} mem={s.peak_memory_gb}GB")
+        else:
+            print_info("No stats yet.")
+        return None
+
+    if verb == "/save":
+        import json
+        from pathlib import Path
+
+        fname = arg.strip() or f"{rec.session_id}.json"
+        data = {
+            "session_id": rec.session_id,
+            "system": session.system_prompt,
+            "messages": session.messages,
+            "params": rec.params,
+        }
+        Path(fname).write_text(json.dumps(data, indent=2))
+        print_info(f"Exported to {fname}")
+        return None
+
+    if verb == "/load":
+        import json
+        from pathlib import Path
+
+        fname = arg.strip()
+        if not fname:
+            print_error("Usage: /load path/to/file.json")
+            return None
+        try:
+            data = json.loads(Path(fname).read_text())
+            session.messages = data.get("messages", [])
+            session.system_prompt = data.get("system")
+            print_info(f"Loaded {len(session.messages)} messages into current session (not yet persisted).")
+        except Exception as e:
+            print_error(str(e))
+        return None
+
+    if verb == "/sessions":
+        recs = list_sessions(12)
+        if not recs:
+            print_info("No persisted sessions yet.")
+        else:
+            for r in recs:
+                print_info(f"  {r.session_id}  ({len(r.messages)} msgs)  updated {r.updated_at[:16]}")
+        return None
+
+    if verb == "/resume":
+        target = arg.strip() or None
+        if target:
+            loaded = load_session(target)
+            if loaded:
+                session.messages = loaded.messages
+                session.system_prompt = loaded.system_prompt
+                rec.session_id = loaded.session_id
+                rec.messages = loaded.messages
+                rec.system_prompt = loaded.system_prompt
+                print_info(f"Switched to session {target}")
+            else:
+                print_error(f"Session not found: {target}")
+        else:
+            latest = get_latest_session()
+            if latest:
+                session.messages = latest.messages
+                session.system_prompt = latest.system_prompt
+                rec.session_id = latest.session_id
+                print_info(f"Resumed latest: {latest.session_id}")
+            else:
+                print_info("No previous session.")
+        return None
+
+    print_error(f"Unknown command '{verb}'. Type /help.")
+    return None
+
+
+# ------------------------------------------------------------------
+# ask (one-shot, still useful)
+# ------------------------------------------------------------------
+
+@app.command()
+def ask(
+    prompt: str = typer.Argument(..., help="Prompt to send"),
+    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    max_tokens: int = typer.Option(1024, "--max-tokens", "-n"),
+    temperature: float = typer.Option(0.7, "--temperature", "-t"),
+    top_p: float = typer.Option(0.95, "--top-p"),
+    system: Optional[str] = typer.Option(None, "--system", "-s"),
+    no_stream: bool = typer.Option(False, "--no-stream"),
+    show_thinking: bool = typer.Option(True, "--show-thinking/--hide-thinking"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp"),
+    draft_model: Optional[str] = typer.Option(None, "--draft-model"),
+    num_draft_tokens: int = typer.Option(3, "--num-draft-tokens"),
+):
+    """One-shot non-interactive generation."""
+    engine = _get_engine(model, enable_mtp, draft_model, num_draft_tokens)
+    chat_session = ChatSession(engine=engine, system_prompt=system, max_tokens=max_tokens,
+                               temperature=temperature, top_p=top_p)
+    chat_session.add_user(prompt)
+
+    streamer = ThinkAwareStreamer(show_thinking=show_thinking)
+    print_assistant_header()
+
+    if no_stream:
+        text = chat_session.generate_once()
+        streamer.feed(text)
+        streamer.flush()
+        console.print()
+    else:
+        parts = []
+        for chunk, stats in chat_session.generate_stream():
+            if chunk:
+                parts.append(chunk)
+                streamer.feed(chunk)
+        streamer.flush()
+        console.print()
+        full = "".join(parts)
+        chat_session.add_assistant(full)
+
+    if chat_session.last_stats:
+        print_info(f"{chat_session.last_stats.generation_tokens} tok @ {chat_session.last_stats.generation_tps:.1f} t/s")
+
+
+# ------------------------------------------------------------------
+# agent — autonomous tool-using loop
+# ------------------------------------------------------------------
+
+@app.command()
+def agent(
+    goal: str = typer.Argument(..., help="High-level goal for the autonomous agent (e.g. 'build and test a small CLI tool in the sandbox')"),
+    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    max_steps: int = typer.Option(10, "--max-steps", help="Safety cap on tool-using steps"),
+    temperature: float = typer.Option(0.4, "--temperature", "-t"),
+    session: Optional[str] = typer.Option(None, "--session"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp"),
+    draft_model: Optional[str] = typer.Option(None, "--draft-model"),
+    num_draft_tokens: int = typer.Option(3, "--num-draft-tokens"),
+):
+    """Run an autonomous agent that can use safe tools (read/write files, run Python, limited shell) inside ./sandbox/."""
+    engine = _get_engine(model, enable_mtp, draft_model, num_draft_tokens)
+    run_agent(
+        goal=goal,
+        engine=engine,
+        max_steps=max_steps,
+        temperature=temperature,
+        session_id=session,
+        persist=True,
+    )
+
+
+# ------------------------------------------------------------------
+# mcp — launch the MCP server for other AIs
+# ------------------------------------------------------------------
+
+@app.command()
+def mcp(
+    host: str = typer.Option("stdio", help="Transport (currently only stdio supported)"),
+):
+    """Start the MCP server so Claude / Cursor / other MCP clients can call this model."""
+    from .mcp import run_server
+
+    console.print("[bold cyan]Starting Nex MCP server (stdio)...[/bold cyan]")
+    console.print("[dim]Other AIs can now discover tools: nex_ask, nex_chat_turn, nex_run_agent, etc.[/dim]")
+    run_server()
+
+
+@app.command()
+def tui(
+    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    enable_mtp: bool = typer.Option(False, "--enable-mtp", "--mtp"),
+):
+    """Launch the modern Textual TUI (aesthetically SOTA terminal UI)."""
+    from .tui import run_tui
+
+    # For a full version we would pass model/mtp into the TUI app.
+    # The TUI currently starts with the default / last used model and has live switching.
+    console.print("[bold cyan]Launching Nex Textual TUI...[/bold cyan]")
+    console.print("[dim]Ctrl+Q to quit • Ctrl+M to focus model list • Ctrl+T to toggle MTP[/dim]")
+    run_tui()
+
+
+# ------------------------------------------------------------------
+# Utility commands
+# ------------------------------------------------------------------
+
+@app.command()
+def sessions(limit: int = typer.Option(15, "--limit")):
+    """List recent persisted sessions."""
+    recs = list_sessions(limit=limit)
+    if not recs:
+        print_info("No sessions found in ./sessions/")
+        return
+    for r in recs:
+        print_info(f"{r.session_id} | msgs={len(r.messages)} | {r.updated_at[:19]}")
+
+
+@app.command()
+def resume(session_id: Optional[str] = typer.Argument(None)):
+    """Resume a specific session (or the latest) in chat mode."""
+    chat(resume=True, session=session_id)
+
+
+# =============================================================================
+# models — the heart of the multi-model expansion
+# =============================================================================
+
+models_app = typer.Typer(
+    name="models",
+    help="Manage and discover MLX + OptiQ models (Qwen, Gemma, Nemotron, Nex, etc.)",
+    add_completion=False,
+)
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("list")
+def models_list(
+    family: Optional[str] = typer.Option(None, "--family", "-f", help="Filter by family (qwen, gemma, nemotron, nex, minicpm, other)"),
+    size: Optional[str] = typer.Option(None, "--size", "-s", help="Filter by size_class (tiny, small, medium, large)"),
+    strength: Optional[str] = typer.Option(None, "--strength", help="Must have this strength (coding, tool_use, reasoning, speed)"),
+):
+    """List known high-quality OptiQ and similar MLX models."""
+    profiles = list_profiles(family=family, size_class=size, min_strength=strength)
+
+    # Merge user-added models
+    user_repos = get_user_models()
+    for repo in user_repos:
+        p = get_profile(repo)
+        if p.repo_id not in [pp.repo_id for pp in profiles]:
+            profiles.append(p)
+
+    if not profiles:
+        print_error("No models matched the filters.")
+        return
+
+    console.print(f"\n[bold]Known OptiQ / MLX Models[/bold] ({len(profiles)} shown)\n")
+
+    for p in profiles:
+        strengths = ", ".join(p.strengths) if p.strengths else "-"
+        alias_str = f"  aliases: {', '.join(p.aliases)}" if p.aliases else ""
+        console.print(
+            f"[bold cyan]{p.name}[/bold cyan]  ({p.family} · {p.size_class} · {p.params})\n"
+            f"  repo: [dim]{p.repo_id}[/dim]\n"
+            f"  strengths: {strengths}\n"
+            f"  default temp: {p.recommended_temperature}   max_tokens: {p.recommended_max_tokens}{alias_str}\n"
+        )
+        if p.notes:
+            console.print(f"  [dim]{p.notes}[/dim]\n")
+
+
+@models_app.command("info")
+def models_info(model: str = typer.Argument(..., help="Model key, alias, or partial name (e.g. qwen9b, gemma, nemotron)")):
+    """Show detailed profile for one model + suggestions."""
+    profile = get_profile(model)
+    console.print(f"\n[bold cyan]{profile.name}[/bold cyan]")
+    console.print(f"Repository: [link=https://huggingface.co/{profile.repo_id}]{profile.repo_id}[/link]")
+    console.print(f"Family: {profile.family}   Size: {profile.size_class}   Params: {profile.params}")
+    console.print(f"Strengths: {', '.join(profile.strengths) or 'general'}")
+    console.print(f"Recommended: temperature={profile.recommended_temperature}, max_tokens={profile.recommended_max_tokens}")
+    if profile.notes:
+        console.print(f"\n{profile.notes}")
+
+    suggestions = suggest_similar(profile.repo_id)
+    if suggestions:
+        console.print("\n[bold]Similar / recommended alternatives:[/bold]")
+        for s in suggestions:
+            console.print(f"  • {s.name}  ({s.repo_id})")
+
+
+@models_app.command("set-default")
+def models_set_default(model: str = typer.Argument(..., help="Model to use as default (key or alias)")):
+    """Persistently set default model (saved in config)."""
+    profile = get_profile(model)
+    cfg_set_default(model)
+    console.print(f"[green]Default model set to[/green] [bold cyan]{profile.name}[/bold cyan] ({profile.repo_id})")
+
+
+@models_app.command("add")
+def models_add(repo: str = typer.Argument(..., help="Full HF repo id of an additional MLX/OptiQ model to remember")):
+    """Add a custom or new OptiQ-style model to your personal list (persisted in config)."""
+    add_user_model(repo)
+    profile = get_profile(repo)
+    console.print(f"[green]Added[/green] [bold]{profile.name}[/bold] ({repo}) to user models.")
+    console.print("It will now appear in suggestions and can be used with --model or aliases.")
+
+
+# ------------------------------------------------------------------
+# self — self management, updates, doctor (uv + classic support)
+# ------------------------------------------------------------------
+
+self_app = typer.Typer(
+    name="self",
+    help="Manage the Nex installation, dependencies, and updates (uv-aware)",
+    add_completion=False,
+)
+app.add_typer(self_app, name="self")
+
+
+def _run_update_command(cmd: list[str], use_uv: bool = False) -> bool:
+    """Run an update command, preferring uv when available."""
+    try:
+        if use_uv and shutil.which("uv"):
+            full_cmd = ["uv"] + cmd
+        else:
+            full_cmd = cmd
+        console.print(f"[dim]Running:[/dim] {' '.join(full_cmd)}")
+        subprocess.check_call(full_cmd)
+        return True
+    except subprocess.CalledProcessError as e:
+        print_error(f"Update command failed: {e}")
+        return False
+    except FileNotFoundError:
+        print_error("Required tool not found (uv or pip).")
+        return False
+
+
+@self_app.command("update")
+def self_update(
+    deps_only: bool = typer.Option(False, "--deps-only", help="Only update dependencies, not the app itself."),
+    force_pip: bool = typer.Option(False, "--force-pip", help="Force classic pip even if uv is available."),
+):
+    """Update Nex and its dependencies (fast with uv if present)."""
+    use_uv = not force_pip and bool(shutil.which("uv"))
+
+    console.print("[bold]Updating Nex + core dependencies...[/bold]")
+
+    if use_uv:
+        success = _run_update_command(["pip", "install", "-U", "-e", ".[tui]"], use_uv=True)
+    else:
+        # Classic path
+        success = _run_update_command([sys.executable, "-m", "pip", "install", "-U", "-e", ".[tui]"])
+
+    if success:
+        console.print("[green]Update complete![/green]")
+        console.print("Run [bold]nex --help[/bold] or [bold]nex self status[/bold] to verify.")
+    else:
+        console.print("[yellow]Update may have partially succeeded. Check above for errors.[/yellow]")
+
+
+@self_app.command("update-deps")
+def self_update_deps(force_pip: bool = typer.Option(False, "--force-pip")):
+    """Update only the Python dependencies (mlx-lm, textual, typer, mcp, etc.)."""
+    use_uv = not force_pip and bool(shutil.which("uv"))
+    console.print("[bold]Updating dependencies only...[/bold]")
+
+    if use_uv:
+        _run_update_command(["pip", "install", "-U", "mlx-lm", "rich", "typer", "mcp", "textual"], use_uv=True)
+    else:
+        _run_update_command([sys.executable, "-m", "pip", "install", "-U", "mlx-lm", "rich", "typer", "mcp", "textual"])
+
+    console.print("[green]Dependencies updated.[/green]")
+
+
+@self_app.command("status")
+def self_status():
+    """Show current installation status, Python, uv/pip, and key package versions."""
+    console.print("[bold]Nex Self Status[/bold]\n")
+
+    console.print(f"Python: [cyan]{sys.version.split()[0]}[/cyan] ({sys.executable})")
+    uv_path = shutil.which("uv")
+    console.print(f"uv: {'[green]available[/green] ' + uv_path if uv_path else '[yellow]not found[/yellow] (install from https://astral.sh/uv)'}")
+
+    try:
+        import importlib.metadata as im
+        for pkg in ["nex-cli", "mlx-lm", "textual", "typer", "mcp", "rich"]:
+            try:
+                ver = im.version(pkg.replace("-", "_"))
+                console.print(f"  {pkg}: {ver}")
+            except im.PackageNotFoundError:
+                console.print(f"  {pkg}: [dim]not installed[/dim]")
+    except Exception as e:
+        print_error(f"Could not read package versions: {e}")
+
+    try:
+        cfg = load_config()
+        console.print(f"\nConfig file: {get_config_path()}")
+        if cfg.get("default_model"):
+            console.print(f"Default model (from config): {cfg['default_model']}")
+        user_models = get_user_models()
+        if user_models:
+            console.print(f"User-added models: {len(user_models)}")
+    except Exception:
+        pass
+
+
+@self_app.command("doctor")
+def self_doctor():
+    """Run basic health checks (model loading, tools, MCP readiness, etc.)."""
+    console.print("[bold]Running Nex doctor...[/bold]\n")
+    issues = []
+
+    # Check uv
+    if not shutil.which("uv"):
+        issues.append("uv not installed (recommended for speed). See https://astral.sh/uv")
+
+    # Try importing core pieces
+    try:
+        from .models import list_profiles
+        models = list_profiles()
+        console.print(f"[green]✓[/green] Registry loaded ({len(models)} known models)")
+    except Exception as e:
+        issues.append(f"Model registry failed: {e}")
+
+    try:
+        from .engine import Engine
+        e = Engine()
+        console.print("[green]✓[/green] Engine class OK")
+    except Exception as e:
+        issues.append(f"Engine import: {e}")
+
+    try:
+        from .mcp import mcp
+        console.print(f"[green]✓[/green] MCP server ready (tools: {len(getattr(mcp, '_tool_manager', type('x',(),{'_tools':{}})())._tools)})")
+    except Exception as e:
+        issues.append(f"MCP: {e}")
+
+    if issues:
+        console.print("\n[yellow]Issues found:[/yellow]")
+        for i in issues:
+            console.print(f"  - {i}")
+    else:
+        console.print("\n[green]All checks passed! System looks healthy.[/green]")
+
+
+if __name__ == "__main__":
+    app()

@@ -1,0 +1,51 @@
+[project]
+name = "nex-cli"
+version = "0.3.0"
+description = "Nex — Multi-model CLI + MCP server for MLX OptiQ models (Qwen3/3.5/3.6, Gemma-4, Nemotron, Nex, MiniCPM, etc.) on Apple Silicon"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Local"}]
+
+dependencies = [
+    # Core (satisfied by the dedicated .venv)
+    "mlx-lm>=0.20",
+    "rich>=13",
+    "typer>=0.9",
+    "huggingface_hub",
+    # For the MCP server (`nex mcp` or `python -m nex.mcp`)
+    "mcp>=1.0",
+]
+
+[project.optional-dependencies]
+tui = [
+    "textual>=0.80",  # Modern SOTA TUI framework for beautiful reactive terminal UIs
+]
+dev = [
+    "textual[dev]>=0.80",
+]
+
+[project.scripts]
+nex = "nex.cli:app"
+
+[project.urls]
+Homepage = "https://huggingface.co/jedisct1/Nex-N2-mini-mlx-OptiQ-4bit"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.uv]
+# Fast, reproducible installs with uv (recommended over pip for this project)
+dev-dependencies = [
+    "textual[dev]>=0.80",
+]
+# Prefer the project's venv when using uv run
+python-preference = "only-system"  # or "managed" if you want uv to handle Pythons
+
+[tool.uv.sources]
+# Local editable for development
+nex-cli = { workspace = true }
