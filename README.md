@@ -12,50 +12,70 @@ Built iteratively with Grok. Fusing the best local MLX/OptiQ inference (this rep
 
 ---
 
-## The Real Problem (Needs First)
+## The Real Problem (Needs First — What No One Else Solves Well)
 
-Developers and teams using autonomous agents (Claude Code, Cursor, Aider, custom MCP agents, etc.) face brutal trade-offs:
+Developers shipping with agents (Claude Code, Cursor, Aider, custom tools, or their own local models) have these painful, unmet needs today:
 
-- **Cloud-only**: Insane cost, latency, and privacy leaks. Every token, every file read, every tool call goes to someone else's servers.
-- **Pure local**: Fast and private, but the models are weaker on hard reasoning, tool use, and safety. Agents go rogue, touch secrets, propose bad deploys, or drift from intent — with zero audit trail.
-- **No middle ground**: No way to get *Grok-level* judgment on the 5-10% of decisions that actually matter, while keeping 90%+ of the work blazing fast and local on Apple Silicon.
+1. **Speed + Privacy + Cost Control Without Sacrificing Capability**  
+   Cloud agents are too slow/expensive/leaky for daily work. Pure local agents are fast and private but lack the reasoning depth for complex tasks, creative leaps, or safe decision-making on ambiguous/high-stakes actions.
 
-xAI built Grok to accelerate understanding the universe. Local agents should multiply human capability — not multiply risk or cost.
+2. **Safety That Actually Works Without Killing Productivity**  
+   Agents are powerful precisely because they can read/write/run freely — but that makes them dangerous. Current tools have weak, model-dependent "safety" (easily jailbroken or ignored). No deterministic policy, no automatic rollback, no way to supervise the *real* agents you already use every day (Claude Code, Cursor, etc.).
 
-This is the missing piece: **Grok in the Loop**.
+3. **Frontier Intelligence Only When It Matters — With Proof**  
+   You don't want (or can't afford) to send every token to Grok/Claude. You want local models for the 80-95% routine work, but real Grok-quality judgment + reasoning for the risky/ambiguous/creative 5-20%. And you need an audit trail that clearly shows *why* a decision was local vs escalated, what context was used, and what the outcome was.
+
+4. **Auditability & Replay for Real Work (Not Toy Logs)**  
+   When an agent does something surprising (or you need to debug, review with a team, or prepare for higher-stakes use), you need structured, replayable evidence — not raw terminal logs. This includes policy decisions, tool effects declared *before* execution, and the exact input/output when Grok was consulted.
+
+5. **Use the Agents I Already Love — But Better**  
+   People don't want to abandon Claude Code or Cursor. They want to wrap/supervise them with better policy, Grok oversight, efficiency, and traces — without changing their daily workflow.
+
+6. **Efficiency at the Hardware Level (Apple Silicon Reality)**  
+   On M-series Macs, you can do dramatically better than cloud or generic local runners if you use advanced quantization (OptiQ) + speculative decoding (MTP). But no one exposes this in a full agent supervision stack with hybrid escalation and safety.
+
+These are not nice-to-haves. They are the blockers preventing teams from trusting agents for real, high-volume, high-stakes work.
+
+**Only this fused stack (Nex OptiQ inference + Sentinel policy/enforcement/traces + MCP-Cortex contracts + real Grok escalation + PTY supervision of external agents) can address all of them at once.**
+
+This is Grok in the Loop: the missing control layer for the agentic era.
 
 ---
 
-## What Only This App Can Do
+## What Only This App Can Do (Unmet Needs → Unique Capabilities)
 
-No other local runner combines all of these at once:
+No other tool addresses the full set of needs above because no other tool has this combination:
 
-- **Native MTP + multi-OptiQ models** (Nex-N2, Qwen3.5/3.6, Gemma-4, Nemotron...) on MLX for real 1.3-1.5× decode speedup and excellent quality/size on M-series.
-- **Deterministic Sentinel policy + continuous enforcement + rollback** (ported from the mature gemOptq/Cortex Sentinel codebase) that blocks protected paths, secrets, external network, and production deploys *before* any model sees them.
-- **MCP-Cortex capability contracts** so every tool the agent wants to call declares its effects upfront (read:secrets, write:workspace, network:external...).
-- **Real Grok escalation**: Local OptiQ models handle the boring/fast parts. When policy or the local auditor says "review" (or risk is high), the *exact* structured context (intent + effects + trace + contract) is sent to real Grok (xAI API) for a high-quality JSON verdict + reasoning + safer alternative.
-- **Unified auditable traces** that explicitly tag every decision as "local OptiQ" or "Grok escalated", with digests, latency, and full replay.
-- **Production TUI + OpenAI/MCP servers** so you can supervise real external agents (Claude Code, Codex, Gemini) or use this as a drop-in local backend for Cursor/Continue/Aider — all under the same Grok + policy layer.
-- **Built by Grok, for the xAI era** — meta, efficient, truth-seeking, and designed to multiply capability without creating new risks.
+- **Local OptiQ + MTP at native speed** on Apple Silicon (multi-model registry of the best 4-bit mixed-precision quants + speculative decoding). This directly solves the efficiency/privacy/cost need that cloud agents fail and generic local runners only partially meet.
+- **Deterministic policy + continuous enforcement + rollback** (from the gemOptq/Cortex Sentinel layer). Hard blocks on secrets, protected paths, external network, production deploys — with automatic rollback. This is the safety-without-friction need that model "safety" features in Claude/Cursor never reliably solve.
+- **MCP-Cortex capability contracts** for tools. Effects are declared *before* execution and fed into policy/Grok. This is the structured tool-use safety need that almost nothing provides today.
+- **Real Grok escalation with rich context**. Local models for the fast 80-95%. When policy or local auditor flags risk/ambiguity, the *exact* intent + effects + trace + contract goes to real Grok for a structured verdict + safer alternative. This uniquely solves the "I want Grok quality without the cloud tax" need.
+- **Unified traces that distinguish local vs Grok decisions**. Every policy action, every tool effect, every escalation, every human override — with stable digests and full replay. This is the auditability need for real work, compliance, debugging, or future high-stakes autonomy (Optimus-scale, etc.).
+- **First-class supervision of the external agents you already use** (Claude Code, Cursor/Codex, Gemini, Aider, etc.) via PTY runner + trust prompt injection + approval queue (borrowed and extended from gemOptq's real-agent harness). Plus the same layer for your own local Nex agents. This is the "use what I already love, but make it safe and smarter" need that pure new local tools ignore.
+- **Grok-native by construction** (the whole project, including the escalation logic and fusion plan, was built iteratively with Grok). This is the meta need for tools that actually advance xAI's mission rather than just wrapping models.
 
-**Result**: 80-95% of work at laptop speed and <20-30W. The hard 5-10% gets real Grok. Every step is policy-enforced and replayable. This is what agentic AI should feel like in 2026.
+**Result**: You get the speed and privacy of local + the judgment of Grok + the safety and auditability of a real supervision layer — for both your local work *and* the agents you already ship with. No other stack delivers this full set.
 
 ---
 
-## Grok in the Loop in Action
+## Grok in the Loop in Action (Addressing the Real Needs)
 
 ```bash
-# The hybrid experience
+# Use your own local agent with Grok escalation + full policy
 GROK_IN_LOOP=true nex agent "Build a small FastAPI hello world in the sandbox, add tests, and verify it"
 
-# Or supervise a real external agent (fusing full Cortex Sentinel)
-# sentinel run --config sentinel.yaml -- claude .
+# Or wrap the agents you already use every day (the Extra Big Wow)
+nex supervise claude .                    # or grok-claude .
+grok-codex .                              # Cursor-style Codex under the same layer
+nex supervise codex --grok-in-loop
 
-# Drop-in server for any tool
+# Drop-in for Cursor / Aider / your own tools (still gets policy + Grok + traces)
 nex serve --model qwen3.5-9b --enable-mtp
 ```
 
-See the live demo script and video outline below.
+The key unmet need this solves: You don't have to choose between "use the powerful agent I already know" and "have real safety + Grok intelligence + auditability." You get both.
+
+See the live demo script and video outline below for the exact "agent tries something dangerous → policy blocks or Grok reviews → safe path taken → full replay" flow.
 
 ---
 
@@ -117,15 +137,119 @@ The video script and landing page are built around the *unique* "needs first" st
 
 ---
 
-## Make Elon Proud — Why This Matters
+## Make Elon Proud — Why This Matters (Needs That Actually Move the Mission)
 
-- **Efficiency at the frontier**: Local OptiQ + MTP is the kind of brutal tokens-per-watt optimization Tesla/Dojo lives for. Grok is only called when it adds disproportionate value.
-- **Auditable autonomy**: Real agents that can act, but with policy guardrails, rollback, and full traces (local decision vs Grok decision). This is the safety layer Optimus-scale autonomy will need.
-- **xAI-native by construction**: Built with Grok. Uses Grok for the hard parts. Designed to multiply xAI's mission (understand the universe) by giving builders a local multiplier that doesn't sacrifice truth or capability.
-- **Truth-seeking infrastructure**: Structured contracts, deterministic policy before LLM judgment, replayable evidence with digests. No vibes. No hidden cloud calls.
-- **Anti-bloat, maximum truth**: uv-first, minimal deps, real code, no mocks. The kind of engineering velocity and honesty xAI stands for.
+xAI's mission is to understand the universe. That requires builders who can use powerful agents at scale without creating new centralization, cost, privacy, or safety problems.
 
-This isn't another local LLM wrapper. It's the reference implementation of what "Grok in the Loop" looks like for people actually shipping agentic systems.
+This stack directly serves that by solving needs that are currently unmet at the intersection of local hardware, frontier models, and real agentic workflows:
+
+- **Efficiency that scales**: The only practical way to get near-frontier agent performance while keeping most tokens on-device (OptiQ + MTP) and only escalating to Grok when it adds real value. This is the tokens-per-watt / energy reality that will determine whether agentic systems can be ubiquitous (cars, robots, personal devices) rather than just another cloud service.
+- **Auditable autonomy at scale**: Agents that can act in the world (or on your codebase) but with deterministic policy, declared effects (MCP-Cortex), continuous enforcement, rollback, and traces that distinguish "what the local model decided" vs "what Grok decided." This is the safety/oversight layer that will be required for anything like Optimus-scale deployment or high-stakes software work.
+- **Grok as the actual intelligence layer, not just another model**: Built with Grok. Uses Grok for the hard parts. Designed so that local efficient agents become a multiplier for Grok rather than a competitor or a diluted version.
+- **Truth-seeking by default**: Policy before LLM judgment. Structured contracts and traces. Replayable evidence. Maximum truth about what actually happened, not "the model said it was fine."
+- **Anti-bloat engineering culture**: uv-first, real code, no mocks, small focused modules, honest boundaries. The velocity and rigor that xAI itself embodies.
+
+This is not another local LLM tool. It is infrastructure for the agentic era that aligns with how xAI thinks about capability, efficiency, truth, and building the future.
+
+---
+
+## The "Extra Big Wow" (What Changes the Game)
+
+The killer unmet need: People already have powerful daily drivers (Claude Code, Cursor/Codex, Aider, etc.). They don't want to switch to a new "local-only" agent.
+
+**Only this stack lets you keep using the agents you already love — while giving them Grok-level judgment on hard calls, Sentinel-grade policy safety, MCP-structured tool effects, and full local-vs-Grok traces.**
+
+```bash
+# Today
+claude .                    # powerful, but risky + expensive + no real audit
+
+# With this
+grok-claude .               # same interface, now under full policy + Grok escalation + traces
+# or
+nex supervise claude .      # same thing, unified command
+```
+
+This is the feature no one else can credibly offer yet, because no one else has the full fusion (local OptiQ speed + real Grok + policy/enforcer/rollback + MCP contracts + PTY-level control of external agents + unified traces).
+
+---
+
+## Current High-Leverage Features (All Implemented, All Needs-Based)
+
+(From the original plan + Grok-in-the-Loop fusion session)
+
+- Multi-model OptiQ registry with MTP speculative decoding → addresses efficiency/privacy/cost needs on Apple Silicon hardware.
+- Autonomous agent with safe sandbox tools + MCP-Cortex contracts → addresses safe tool use + declared effects needs.
+- Production Textual TUI (real multi-turn, live model/MTP switching, tool pane, Grok escalation visibility) + richer approval queue concepts → addresses human-in-the-loop + visibility needs.
+- Full OpenAI-compatible server (with tool_calls passthrough) → addresses "use with the tools I already have" need.
+- First-class supervision of external agents (`nex supervise claude .`, `grok-claude`, `grok-codex`, etc.) borrowing PTY runner, trust prompt injection, interaction harnesses, and approval queue from gemOptq → directly solves "use the agents I already love, but make them safe and smarter."
+- GrokEscalator + GrokAugmentedAuditor (local OptiQ fast path + real xAI Grok for review cases) → addresses the hybrid intelligence need.
+- SentinelPolicy + ContinuousEnforcer (ported/adapted) with rollback → addresses the deterministic safety + recovery need.
+- Unified trace viewer (`nex trace replay`) that shows local vs Grok decisions → addresses the auditability + learning need.
+- `nex models download | recommend | set-override`, `nex self update | status | doctor` (uv-aware), plugin system, history RAG — all supporting the core needs.
+
+See `ARCHITECTURE_MERGE.md` for exactly how the two repos combine to deliver capabilities no single project has.
+
+---
+
+## Quick Start (Tested on Fresh Clone From GitHub)
+
+```bash
+# Fresh clone + modern uv path (recommended)
+git clone https://github.com/deesatzed/OptiqMTPMLX.git
+cd OptiqMTPMLX
+uv venv .venv
+uv pip install -e '.[server,tui,rag]'
+
+# The hybrid "Grok in the Loop" experience (addresses hybrid intelligence + safety needs)
+GROK_IN_LOOP=true nex agent "Your real goal here"
+
+# The Extra Big Wow — supervise the agents you already use
+nex supervise claude .                    # or grok-claude .
+grok-codex .                              # Cursor-style under the same layer
+
+# Beautiful TUI with live supervision
+./run.sh tui
+
+# OpenAI server (point Cursor/Aider/your tools at it — still gets policy + Grok + traces)
+nex serve --model qwen3.5-9b --enable-mtp
+```
+
+Requires Apple Silicon Mac with Metal. XAI_API_KEY optional (full escalation when present; graceful fallback otherwise).
+
+---
+
+## Showpiece & Demo Assets (Needs-First, Attention-Grabbing)
+
+- **Polished landing page**: `docs/index.html` (open directly or `cd docs && python -m http.server 8080`). Leads with real user pains, "only this stack" unique value, and the external supervision story.
+- **Detailed showpiece brief**: `docs/showpiece/optiq-mtp-mlx.md` — the "why this exists" document written around unmet needs.
+- **Ready-to-record video script**: `docs/grok_in_loop_demo_video_script.md` (optimized for X + YouTube, with scenes that start from pain and end on the meta "built with Grok for the xAI era" + efficiency + auditable autonomy angles).
+
+---
+
+## Make Elon / xAI Proud — Direct Alignment
+
+This directly serves the mission by giving builders a tool that is:
+- **Efficient** at the hardware level (the only way agentic systems become ubiquitous instead of another cloud cost center).
+- **Auditable and safe by design** (the layer that will be required for anything like Optimus-scale or high-volume software autonomy).
+- **Grok-native** (uses real Grok for the parts where it is uniquely valuable; the whole project was built with Grok).
+- **Truth-seeking** (policy before judgment, structured contracts, replayable evidence, honest boundaries).
+- **Anti-bloat, maximum velocity** (uv-first, real code, no mocks, small focused modules).
+
+This is infrastructure for the agentic era that aligns with how xAI thinks.
+
+---
+
+## Next (Keep Pushing)
+
+The fusion is the moat. The "Extra Big Wow" is the ability to safely supervise the agents people *already* use, with Grok as the intelligent layer.
+
+If you want to keep going on any of the remaining items (deeper live TUI supervision dashboard with side-by-side Grok panel + approval queue, public redacted trace gallery, one-command "turn my existing Cursor into a Grok-in-the-Loop version", live efficiency widget, actual end-to-end recording of a real Claude Code session under the new grok-claude wrapper, etc.), just say the word.
+
+We're building the thing that should exist. Needs first. Only-we-can capabilities. Maximum truth.
+
+Clone it. Run it under Grok in the Loop. Look at the trace. Build the future safely and efficiently.
+
+Built with Grok. For the xAI era.
 
 ---
 

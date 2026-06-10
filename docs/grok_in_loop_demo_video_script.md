@@ -11,17 +11,20 @@
 ### Scene 1: The Hook / Pain (0-12s)
 
 **Visuals**:
-- Clean terminal. Agent (Claude Code or local model) is running.
+- Clean terminal. A developer is using their normal daily agent (Claude Code or Cursor).
 - On screen: Agent says "I'll just update the production .env with the new keys and deploy..."
-- Suddenly: "Permission denied. Protected path. Effect rolled back."
-- Trace appears: "BLOCK — secret-like path (.env) — deterministic policy"
+- Suddenly: "Permission denied. Protected path. Effect rolled back. Full trace recorded."
+- TUI shows the policy decision + option to escalate to Grok for review.
 
 **Voiceover / Captions**:
-"Your agent just tried to touch production secrets.  
-Cloud agents would have done it (and charged you for the privilege).  
-Pure local agents would have done it silently.  
+"Real need #1 that no one else solves well:  
+I already have a powerful daily driver (Claude Code, Cursor, Aider). I don't want to switch to a new 'local-only' agent.  
+I just want to make *this one* safe and auditable without changing how I work.
 
-This one didn't. Because it has something no other local stack has."
+Cloud agents will happily do the dangerous thing (and bill you).  
+Pure local agents will do it quietly, with no real policy and no audit trail.  
+
+This is the first stack that wraps the exact agents you already use every day with deterministic policy, automatic rollback, and real Grok judgment only on the calls that matter — without forcing a workflow change."
 
 **On-screen text**: "Grok in the Loop. The only hybrid that actually works."
 
@@ -42,11 +45,13 @@ Deterministic Sentinel policy + MCP contracts catch the dangerous 10% before any
 When it's genuinely ambiguous or high-stakes, the exact structured context goes to real Grok."
 
 **On-screen**:
-- "Local OptiQ (fast)"
-- "Sentinel Policy + Enforcer (safe)"
-- "Grok Escalation (smart when it matters)"
-- "Supervise real Claude Code / Codex / Cursor (borrowed PTY + trust hooks + approval queue)"
-- "Unified trace with local vs Grok decisions"
+- "The real unmet need: I want to keep using Claude Code / Cursor every day, but I need real safety + Grok on the hard calls + proof of what happened."
+- "Local OptiQ + MTP (fast & efficient on my Mac)"
+- "Sentinel Policy + Enforcer + rollback (deterministic safety that actually works)"
+- "MCP-Cortex contracts (tools declare effects before they run)"
+- "Grok Escalation only when policy or local auditor says this is risky/uncertain"
+- "Supervise the exact agents I already use (Claude Code, Cursor, etc.) via PTY + trust hooks + approval queue"
+- "Unified trace that shows local decision vs Grok decision with full context"
 
 ---
 
