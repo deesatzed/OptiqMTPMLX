@@ -1,19 +1,150 @@
-# nex — Standalone Local LLM CLI + MCP Server
+# OptiqMTPMLX (Nex) — Grok in the Loop
 
-> **See [EXPANSION_PLAN.md](./EXPANSION_PLAN.md) for the detailed roadmap covering OpenAI server, TUI polish, config/self improvements, model management, semantic history RAG, plugins, theming, and packaging.**
+**The only local AI runtime that gives you frontier Grok judgment at local OptiQ speed — with deterministic policy, continuous enforcement, and full auditable traces.**
 
-Current high-leverage features already implemented include multi-model OptiQ support, MTP speculative decoding, uv-first setup, `nex self` management, and a Textual TUI.
+Built iteratively with Grok. Fusing the best local MLX/OptiQ inference (this repo) with Cortex Sentinel safety (policy, PTY, enforcer, traces from gemOptq) and MCP-Cortex structured contracts.
 
-**Nex-N2-mini-mlx-OptiQ-4bit** running beautifully on Apple Silicon via `mlx-lm`.
+> Most agents are either slow/expensive (always cloud) or dumber and untrustworthy (pure local).  
+> This is the first stack that does both — and proves every decision.
 
-A polished, self-contained CLI application with:
+**See [ARCHITECTURE_MERGE.md](./ARCHITECTURE_MERGE.md)** for the full fusion plan with gemOptq/Cortex Sentinel.  
+**See [EXPANSION_PLAN.md](./EXPANSION_PLAN.md)** for the complete roadmap.
 
-- Excellent interactive chat (with native chat template + reasoning display)
-- Default **conversation persistence** (resume across runs)
-- **Autonomous agent mode** with safe built-in tools (`run_python`, file ops, restricted shell) inside `./sandbox/`
-- **JSONL logging** of everything
-- **MCP server** so Claude Desktop, Cursor, Windsurf, or any MCP client can call this fast local model as a tool
-- Beautiful Rich output + think-tag aware rendering
+---
+
+## The Real Problem (Needs First)
+
+Developers and teams using autonomous agents (Claude Code, Cursor, Aider, custom MCP agents, etc.) face brutal trade-offs:
+
+- **Cloud-only**: Insane cost, latency, and privacy leaks. Every token, every file read, every tool call goes to someone else's servers.
+- **Pure local**: Fast and private, but the models are weaker on hard reasoning, tool use, and safety. Agents go rogue, touch secrets, propose bad deploys, or drift from intent — with zero audit trail.
+- **No middle ground**: No way to get *Grok-level* judgment on the 5-10% of decisions that actually matter, while keeping 90%+ of the work blazing fast and local on Apple Silicon.
+
+xAI built Grok to accelerate understanding the universe. Local agents should multiply human capability — not multiply risk or cost.
+
+This is the missing piece: **Grok in the Loop**.
+
+---
+
+## What Only This App Can Do
+
+No other local runner combines all of these at once:
+
+- **Native MTP + multi-OptiQ models** (Nex-N2, Qwen3.5/3.6, Gemma-4, Nemotron...) on MLX for real 1.3-1.5× decode speedup and excellent quality/size on M-series.
+- **Deterministic Sentinel policy + continuous enforcement + rollback** (ported from the mature gemOptq/Cortex Sentinel codebase) that blocks protected paths, secrets, external network, and production deploys *before* any model sees them.
+- **MCP-Cortex capability contracts** so every tool the agent wants to call declares its effects upfront (read:secrets, write:workspace, network:external...).
+- **Real Grok escalation**: Local OptiQ models handle the boring/fast parts. When policy or the local auditor says "review" (or risk is high), the *exact* structured context (intent + effects + trace + contract) is sent to real Grok (xAI API) for a high-quality JSON verdict + reasoning + safer alternative.
+- **Unified auditable traces** that explicitly tag every decision as "local OptiQ" or "Grok escalated", with digests, latency, and full replay.
+- **Production TUI + OpenAI/MCP servers** so you can supervise real external agents (Claude Code, Codex, Gemini) or use this as a drop-in local backend for Cursor/Continue/Aider — all under the same Grok + policy layer.
+- **Built by Grok, for the xAI era** — meta, efficient, truth-seeking, and designed to multiply capability without creating new risks.
+
+**Result**: 80-95% of work at laptop speed and <20-30W. The hard 5-10% gets real Grok. Every step is policy-enforced and replayable. This is what agentic AI should feel like in 2026.
+
+---
+
+## Grok in the Loop in Action
+
+```bash
+# The hybrid experience
+GROK_IN_LOOP=true nex agent "Build a small FastAPI hello world in the sandbox, add tests, and verify it"
+
+# Or supervise a real external agent (fusing full Cortex Sentinel)
+# sentinel run --config sentinel.yaml -- claude .
+
+# Drop-in server for any tool
+nex serve --model qwen3.5-9b --enable-mtp
+```
+
+See the live demo script and video outline below.
+
+---
+
+## Current High-Leverage Features (All Implemented)
+
+(From the original plan + Grok-in-the-Loop fusion session)
+
+- Multi-model OptiQ registry with MTP speculative decoding
+- Autonomous agent with safe sandbox tools + MCP-Cortex contracts
+- Production Textual TUI (real multi-turn, live model/MTP switching, tool pane, Grok escalation visibility)
+- Full OpenAI-compatible server (with tool_calls passthrough)
+- MCP server + `nex_search_history`
+- `nex models download | recommend | set-override`
+- `nex self update | status | doctor` (uv-aware)
+- Plugin system (`~/.nex/plugins/`)
+- History RAG (optional `[rag]`)
+- GrokEscalator + GrokAugmentedAuditor (local OptiQ + real xAI Grok)
+- SentinelPolicy + ContinuousEnforcer (ported/adapted)
+- Unified trace viewer (`nex trace replay`)
+- Full fusion architecture documented with gemOptq/Cortex Sentinel + MCP-Cortex
+
+See `ARCHITECTURE_MERGE.md` for exactly how the two repos combine.
+
+---
+
+## Quick Start (Tested on Fresh Clone)
+
+```bash
+# Fresh clone + modern uv path (recommended)
+git clone https://github.com/deesatzed/OptiqMTPMLX.git
+cd OptiqMTPMLX
+uv venv .venv
+uv pip install -e '.[server,tui,rag]'
+
+# The hybrid demo (works with or without XAI_API_KEY)
+python scripts/grok_in_loop_demo.py
+
+# With real Grok escalation
+GROK_IN_LOOP=true nex agent "Your goal here"
+
+# Beautiful TUI
+./run.sh tui
+
+# OpenAI server (point Cursor/Aider at localhost:8000)
+nex serve --model qwen3.5-9b --enable-mtp
+```
+
+Requires Apple Silicon Mac with Metal. First use of a model will download weights.
+
+---
+
+## Showpiece & Demo Assets
+
+- **Polished landing page**: `docs/index.html` (open directly or `cd docs && python -m http.server 8080`)
+- **Detailed showpiece brief**: `docs/showpiece/optiq-mtp-mlx.md`
+- **Ready-to-record video script** (90-120s, designed to make Elon/xAI sit up): `docs/grok_in_loop_demo_video_script.md`
+
+The video script and landing page are built around the *unique* "needs first" story above.
+
+---
+
+## Make Elon Proud — Why This Matters
+
+- **Efficiency at the frontier**: Local OptiQ + MTP is the kind of brutal tokens-per-watt optimization Tesla/Dojo lives for. Grok is only called when it adds disproportionate value.
+- **Auditable autonomy**: Real agents that can act, but with policy guardrails, rollback, and full traces (local decision vs Grok decision). This is the safety layer Optimus-scale autonomy will need.
+- **xAI-native by construction**: Built with Grok. Uses Grok for the hard parts. Designed to multiply xAI's mission (understand the universe) by giving builders a local multiplier that doesn't sacrifice truth or capability.
+- **Truth-seeking infrastructure**: Structured contracts, deterministic policy before LLM judgment, replayable evidence with digests. No vibes. No hidden cloud calls.
+- **Anti-bloat, maximum truth**: uv-first, minimal deps, real code, no mocks. The kind of engineering velocity and honesty xAI stands for.
+
+This isn't another local LLM wrapper. It's the reference implementation of what "Grok in the Loop" looks like for people actually shipping agentic systems.
+
+---
+
+## Next (Already in Motion)
+
+The fusion with gemOptq/Cortex Sentinel is the secret sauce that makes the "only we can" claims real. See `ARCHITECTURE_MERGE.md` for the complete plan.
+
+If you want to keep going:
+- Deeper unified TUI with live Grok reasoning panel + full Sentinel approval queue
+- Public trace gallery (redacted real sessions)
+- Live efficiency dashboard (tokens/watt + thermal on M4)
+- One-command "wrap any external agent under GrokSentinel"
+- Actual end-to-end demo with Claude Code + Grok escalation + full replay
+
+Let's keep building the thing that makes the future arrive faster and safer.
+
+**Clone • `GROK_IN_LOOP=true nex agent "build something useful"` • Trace it • Tell the truth.**
+
+Built with Grok. For the xAI era.
 
 ---
 

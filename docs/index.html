@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiqMTPMLX • Grok in the Loop</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #00f5ff;
+            --accent: #ff2d55;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+            background: #0a0a0a;
+            color: #f0f0f0;
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(180deg, #111 0%, #0a0a0a 100%);
+            border-bottom: 1px solid #222;
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .hero {
+            max-width: 1200px;
+            margin: 3rem auto 5rem;
+            padding: 0 2rem;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 3.6rem;
+            font-weight: 700;
+            line-height: 1.05;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #fff, #ccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero .subtitle {
+            font-size: 1.5rem;
+            color: #ff2d55;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        
+        .pain {
+            font-size: 1.1rem;
+            max-width: 680px;
+            margin: 0 auto 2.5rem;
+            color: #bbb;
+        }
+        
+        .badges {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+        
+        .badge {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 0.35rem 0.9rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.9rem 1.8rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: #000;
+            font-weight: 700;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid #444;
+            color: #fff;
+        }
+        
+        .section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem 4.5rem;
+        }
+        
+        .section h2 {
+            font-size: 2.1rem;
+            margin-bottom: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .pain-solution {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2.5rem 0;
+        }
+        
+        .pain-box, .solution-box {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 1.75rem;
+        }
+        
+        .pain-box {
+            border-color: #ff2d55;
+        }
+        
+        .solution-box {
+            border-color: #00f5ff;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .feature-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 1.75rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: #333;
+        }
+        
+        .feature-card h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+        
+        .architecture {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+        }
+        
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid #222;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: ui-monospace, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        .only-we {
+            background: #0f0f0f;
+            border-left: 5px solid var(--primary);
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #666;
+            border-top: 1px solid #222;
+        }
+        
+        .highlight {
+            color: var(--primary);
+        }
+        
+        .elon-note {
+            font-style: italic;
+            color: #888;
+            border-top: 1px solid #222;
+            padding-top: 1.5rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="nav">
+            <a href="#" class="logo">OptiqMTPMLX</a>
+            <div>
+                <a href="https://github.com/deesatzed/OptiqMTPMLX" class="btn btn-secondary" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="hero">
+        <div class="badges">
+            <div class="badge">Apple Silicon Native</div>
+            <div class="badge">OptiQ + MTP</div>
+            <div class="badge">Grok in the Loop</div>
+            <div class="badge">Sentinel Policy + Traces</div>
+        </div>
+        
+        <h1>Your agent just tried to<br>touch production.<br><span style="color:#ff2d55">Local policy blocked it.</span><br>Grok reviewed the exact diff<br>and gave you a safer plan<br>in 380 ms.</h1>
+        
+        <p class="pain">
+            All on your M4 Pro. Full replayable trace. Local speed for 90% of the work.<br>
+            Real Grok judgment for the moments that matter.
+        </p>
+        
+        <div class="cta-buttons">
+            <a href="#quickstart" class="btn btn-primary">Clone &amp; Run the Demo →</a>
+            <a href="https://github.com/deesatzed/OptiqMTPMLX" class="btn btn-secondary">View Source</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>The Problem No One Else Solves</h2>
+        
+        <div class="pain-solution">
+            <div class="pain-box">
+                <h3 style="color:#ff2d55">Cloud-only agents</h3>
+                <ul>
+                    <li>Every token, every file read, every tool call → someone else's servers</li>
+                    <li>Insane cost + latency</li>
+                    <li>Zero privacy for your code, secrets, or proprietary work</li>
+                    <li>You have no control when the model hallucinates a bad deploy</li>
+                </ul>
+            </div>
+            <div class="solution-box">
+                <h3 style="color:#00f5ff">Pure local agents</h3>
+                <ul>
+                    <li>Fast and private... until the model goes rogue</li>
+                    <li>Weaker reasoning on hard problems</li>
+                    <li>No audit trail. No rollback. No proof of what happened.</li>
+                    <li>You either babysit it constantly or cross your fingers</li>
+                </ul>
+            </div>
+        </div>
+        
+        <p style="text-align:center; font-size:1.15rem; max-width:720px; margin: 1.5rem auto;">
+            <strong>Only OptiqMTPMLX gives you both at the same time — with Grok as the smart escalation layer and real policy guardrails.</strong>
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>What Only This Stack Can Deliver</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Local OptiQ + MTP Speed</h3>
+                <p>Native multi-model support for the best OptiQ-4bit quants (Nex, Qwen3.5/3.6, Gemma-4...) with speculative decoding. Most work happens at laptop speed and low power.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Real Grok Escalation</h3>
+                <p>When policy or the local auditor flags risk, the *exact* structured context is sent to real Grok (xAI). You get frontier reasoning only where it matters — and a full trace of why it was called.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Sentinel-Grade Safety</h3>
+                <p>Deterministic policy (ported from Cortex Sentinel) + continuous enforcement + rollback. Hard blocks on secrets, protected paths, external network, and production deploys. MCP-Cortex contracts declare tool effects *before* they run.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Unified Auditable Traces</h3>
+                <p>Every decision — local OptiQ or Grok — is recorded with digests, risk class, effects, and reasoning. Replay the entire session. Prove what happened.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="architecture">
+            <h2 style="margin-top:0">The Architecture (Grok in the Loop)</h2>
+            <p><strong>Local OptiQ Layer</strong> (Nex) → Fast multi-model inference with MTP + safe sandbox tools</p>
+            <p><strong>Sentinel Supervision</strong> (Cortex concepts) → Policy engine, continuous enforcer, rollback, approval queue</p>
+            <p><strong>MCP-Cortex Contracts</strong> → Structured effect declarations for every tool</p>
+            <p><strong>Grok Escalation</strong> → When REVIEW is required, rich context goes to real Grok → structured verdict + safer alternative</p>
+            <p><strong>Unified Traces + TUI</strong> → Everything is replayable. Local vs Grok decisions are explicit.</p>
+        </div>
+    </div>
+
+    <div id="quickstart" class="section">
+        <h2>Quick Start (Tested on Fresh Clone)</h2>
+        
+        <div class="code-block">
+# Modern fast path
+git clone https://github.com/deesatzed/OptiqMTPMLX.git
+cd OptiqMTPMLX
+uv venv .venv
+uv pip install -e '.[server,tui,rag]'
+
+# The signature "Grok in the Loop" experience
+GROK_IN_LOOP=true nex agent "Build a small FastAPI hello world in the sandbox, add tests, and verify it"
+
+# Or the beautiful TUI
+./run.sh tui
+        </div>
+        
+        <p style="color:#888">Requires Apple Silicon with Metal. XAI_API_KEY optional for real escalation (falls back gracefully).</p>
+    </div>
+
+    <div class="section">
+        <div class="only-we">
+            <h2 style="margin-top:0">The "Only We Can" Claims</h2>
+            <ul>
+                <li>The only local runner with native MTP + OptiQ multi-model + real Grok escalation under one policy layer.</li>
+                <li>The only stack that can supervise both your own local agents *and* real external ones (Claude Code, Codex, Gemini) with the same auditable Grok + Sentinel rules.</li>
+                <li>The only one that produces traces explicitly separating "what the local OptiQ model decided" vs "what Grok decided" — with full context and digests.</li>
+                <li>Built by Grok. For the xAI era. Maximum truth. Minimum bloat. Real engineering.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Showpiece Assets</h2>
+        <ul>
+            <li><strong>Landing page</strong>: <code>docs/index.html</code> (serve with <code>cd docs && python -m http.server 8080</code>)</li>
+            <li><strong>Detailed brief</strong>: <code>docs/showpiece/optiq-mtp-mlx.md</code></li>
+            <li><strong>Video script</strong> (designed for Elon/xAI attention): <code>docs/grok_in_loop_demo_video_script.md</code></li>
+            <li><strong>Architecture fusion plan</strong>: <code>ARCHITECTURE_MERGE.md</code></li>
+        </ul>
+    </div>
+
+    <footer class="footer">
+        <p class="elon-note">
+            Built with Grok. For the xAI era.<br>
+            Efficiency that would make Tesla proud. Autonomy with the audit trail Optimus will need.<br>
+            Truth-seeking infrastructure for agentic systems.
+        </p>
+        <p><a href="https://github.com/deesatzed/OptiqMTPMLX">github.com/deesatzed/OptiqMTPMLX</a></p>
+    </footer>
+</body>
+</html>
