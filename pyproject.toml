@@ -34,6 +34,8 @@ dev = [
 
 [project.scripts]
 nex = "nex.cli:app"
+grok-claude = "scripts.grok_claude:main"
+grok-codex = "scripts.grok_codex:main"
 
 [project.urls]
 Homepage = "https://huggingface.co/jedisct1/Nex-N2-mini-mlx-OptiQ-4bit"

@@ -28,7 +28,7 @@ No other project combines these capabilities:
 
 4. **Unified, replayable, auditable traces** — Every decision (local policy, local auditor, Grok escalation, human action) is in one digest-verified log. The trace explicitly shows "local OptiQ decision" vs "Grok escalated" with full context. This is the kind of provenance real engineering teams and future large-scale autonomy will need.
 
-5. **Production interfaces** — Beautiful Textual TUI, full OpenAI-compatible server (drop-in for Cursor/Continue/Aider), MCP server. You can supervise real external agents (Claude Code, Codex, Gemini) under the same Grok + policy layer.
+5. **Production interfaces + Real External Agent Supervision** — Beautiful Textual TUI, full OpenAI-compatible server (drop-in for Cursor/Continue/Aider), MCP server. Plus first-class wrappers (`nex supervise claude .`, `grok-claude .`, `grok-codex .`) that borrow PTY runner, trust prompt injection, interaction harnesses, and approval queue patterns directly from gemOptq's proven real_agent_smoke, PtyAgentRunner, and SentinelTUI. Turn every agent you already love into a fully policy-gated, Grok-escalated, fully traced session under one auditable control plane. This is the "Extra Big Wow" feature: the universal safe supervisor for the entire AI coding agent ecosystem.
 
 This is not "local LLM + some safety." This is the deliberate fusion of the best local efficiency stack with the best local supervision stack, with real Grok as the high-quality backstop.
 

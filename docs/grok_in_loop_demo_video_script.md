@@ -45,6 +45,7 @@ When it's genuinely ambiguous or high-stakes, the exact structured context goes 
 - "Local OptiQ (fast)"
 - "Sentinel Policy + Enforcer (safe)"
 - "Grok Escalation (smart when it matters)"
+- "Supervise real Claude Code / Codex / Cursor (borrowed PTY + trust hooks + approval queue)"
 - "Unified trace with local vs Grok decisions"
 
 ---
@@ -93,28 +94,52 @@ The rest happens locally, under policy, with evidence."
 
 ---
 
-### Scene 5: The Meta + Call to Action (72s-end)
+### Scene 5: Extra Big Wow — Supervise the Agents You Already Use (55-75s)
 
 **Visuals**:
-- Final screen: the full stack in action (TUI + server + trace + Grok escalation happening).
+- `nex supervise claude .` or `grok-claude .` launching real Claude Code in a temp workspace.
+- On-screen: Claude's trust prompt intercepted, policy gate fires, Grok reviews the proposed action, TUI approval queue shows "Grok escalated" with full context.
+- Same for `grok-codex .` (Cursor-style) — trust prompt + command approval + harmless execution marker.
+- Trace replay shows the external agent's output mixed with Sentinel decisions and Grok verdicts.
+
+**Voiceover / Captions**:
+"This isn't just for our local Nex agent.  
+Borrowing the battle-tested PTY runner, trust prompt injection, real-agent harness, and approval queue from gemOptq, we now wrap *real* Claude Code, Codex/Cursor, Gemini — the tools you already use every day.
+
+`grok-claude .`  
+`grok-codex .`  
+`nex supervise claude .`
+
+Same policy. Same Grok escalation. Same full traces.  
+One auditable Grok-in-the-Loop control plane for the entire agent ecosystem."
+
+**On-screen big**:
+"The only stack that puts Grok + Sentinel policy around Claude Code and Cursor."
+
+### Scene 6: The Meta + Call to Action (75s-end)
+
+**Visuals**:
+- Final screen: the full stack (TUI dashboard + external agent supervision + Grok review + trace replay).
 - GitHub link + clone command.
 - Text: "The reference implementation of Grok in the Loop on Apple Silicon."
 
 **Voiceover / Captions**:
 "This entire project — the local stack, the escalation logic, the fusion with real policy and traces — was built iteratively with Grok itself.
 
-Clone it. Run an agent under Grok in the Loop. Look at the trace.  
-Then ask yourself: what could you actually ship if your agents were this fast, this safe, and this honest?"
+Clone it. Run `grok-claude .` or `GROK_IN_LOOP=true nex agent "..."`. Look at the trace.  
+Then ask yourself: what could you actually ship if every agent you used was this fast, this safe, this auditable, and this honest?"
 
 **Final screen**:
 ```
 git clone https://github.com/deesatzed/OptiqMTPMLX.git
 GROK_IN_LOOP=true nex agent "build something useful"
+# or
+grok-claude .
 
-Built with Grok. Maximum truth. Real engineering.
+Built with Grok. Maximum truth. Real engineering. For the xAI era.
 ```
 
-**End card**: Links to the showpiece brief, video script, and ARCHITECTURE_MERGE.md.
+**End card**: Links to showpiece, ARCHITECTURE_MERGE.md, and the live demo script.
 
 ---
 
