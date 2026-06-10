@@ -306,23 +306,25 @@ This plan is designed to be living — update it as we learn.
 
 **Status**: **Significant progress made** (2025-06).
 
-**Implemented in this "crank out" pass**:
-- OpenAI-compatible server (`nex serve`) with full streaming, MTP passthrough, model selection.
-- Major TUI upgrade: real multi-turn ChatSession, persistence, live model/MTP switching, improved rendering.
-- Richer config + runtime overrides (via `get_runtime_overrides`).
-- Model download + recommend commands (`nex models download`, `nex models recommend`).
-- Semantic history search (`nex search` + `nex_search_history` MCP tool) — optional `[rag]` extra.
-- Basic plugin system (auto-loads from `~/.nex/plugins/` and `./plugins/`).
-- Shared `theme.py` stub.
-- All integrated with existing MTP, registry, agent, MCP, uv, and self commands.
+**Implemented in this "crank out" pass** (multiple rounds):
+- OpenAI-compatible server (`nex serve`) with full streaming/non-streaming, MTP passthrough, model selection, /v1/models, /health. Production-ready for Cursor, Continue.dev, Aider, agents, etc.
+- Major Textual TUI upgrade: real multi-turn via ChatSession + persistence, live model/MTP switching, think tag handling in Markdown, theme integration, live stats, clean UI.
+- Richer config system (`get_runtime_overrides()`, deeper wiring into engine/CLI/TUI/server).
+- Enhanced model management: `nex models download <model>`, `nex models recommend "query" --max-memory X`, memory estimates in profiles.
+- Semantic history RAG: `nex search "query"`, MCP `nex_search_history`, optional `[rag]` extra.
+- Plugin system: auto `load_plugins()` from `~/.nex/plugins/` and `./plugins/`, with working example `plugins/example_calculator.py`.
+- Shared theming (`nex/theme.py`) wired into Rich render and TUI.
+- All new features fully integrated with MTP, multi-model registry, agent tools, MCP, uv launcher, self commands, and persistence.
+- Example plugin, server, improved TUI, RAG, etc. committed and pushed to GitHub.
 
-See code in `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py` (plugins), updated `cli.py`, `config.py`, `models.py`.
+See: `nex/server.py`, `nex/tui.py`, `nex/history_rag.py`, `nex/tools.py`, `nex/theme.py`, `plugins/`, updated `cli.py`/`config.py`/`models.py`/`pyproject.toml`.
 
-**Remaining**:
-- Deeper TUI polish (Markdown + collapsible thinking panel, tool viewer).
-- Full per-model override persistence in config + UI.
-- Theming engine wired into Rich + Textual.
-- `uv tool install` / standalone binary packaging notes + example.
-- Vision support (when good models exist).
+**Remaining / Polish**:
+- Deeper TUI (collapsible thinking, dedicated tool execution pane, better Markdown streaming).
+- Full per-model override UI and persistence.
+- Complete theming engine across Rich + Textual.
+- `uv tool install` / standalone binary packaging guidance + example.
+- OpenAI server tool_calls support (standard format passthrough).
+- Vision support (when good MLX-VL OptiQ models are available).
 
 The plan remains the north star for future work.

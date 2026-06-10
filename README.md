@@ -240,12 +240,12 @@ The engine, tools, and persistence layers are designed to be reusable.
 
 New high-leverage features (see EXPANSION_PLAN.md for full status):
 
-- `nex serve` — full OpenAI-compatible API (with model + MTP support)
-- `nex tui` — production Textual interface with real history + model switching
-- `nex search "query"` — semantic search over your past conversations
-- `nex models download` / `recommend` — one-command model management
-- `nex self` — updates, doctor, status (uv-aware)
-- Plugin system for custom tools
+- `nex serve [--port 8000] [--model qwen9b] [--enable-mtp]` — full OpenAI-compatible API (streaming + non-streaming, model + MTP passthrough). Works with Cursor, Continue.dev, Aider, custom agents, etc.
+- `nex tui` — production Textual TUI with real multi-turn history (ChatSession + persistence), live model/MTP switching, think tag rendering, live stats.
+- `nex search "your query"` — semantic search over your conversation history (install with `[rag]` extra).
+- `nex models download <alias>` and `nex models recommend "coding tool use"` — one-command model discovery and management with memory estimates.
+- `nex self update | update-deps | status | doctor` — uv-aware self management and health checks.
+- Plugin system — easily add custom tools by dropping Python files in `~/.nex/plugins/` or `./plugins/` (example: `plugins/example_calculator.py`).
 
 ## Multi-Model Support (The Expansion)
 
