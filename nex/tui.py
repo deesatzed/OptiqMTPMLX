@@ -43,6 +43,17 @@ from .persistence import (
 from .session import ChatSession as CoreChatSession
 from .theme import get_color
 from .tools import parse_tool_call, execute_tool
+from .sentinel.policy import PolicyDecision, PolicyAction, FileEffect
+from .sentinel.enforcer import ContinuousEnforcer
+from dataclasses import dataclass
+
+
+@dataclass
+class PendingApproval:
+    prompt_line: str
+    file_effects: list[FileEffect]
+    policy_decision: PolicyDecision
+    grok_verdict: str | None = None
 
 
 class NexTUI(App):

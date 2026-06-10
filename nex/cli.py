@@ -733,6 +733,19 @@ def search(query: str = typer.Argument(..., help="Semantic search over your chat
         console.print("---")
 
 
+@app.command("trace")
+def trace_replay(
+    trace_file: str = typer.Argument(..., help="Path to .jsonl trace"),
+    format: str = typer.Option("text", "--format", help="text or json"),
+):
+    """Unified trace viewer (Nex + gemOptq-style traces, shows Grok escalations)."""
+    from .sentinel.trace_viewer import replay_trace
+    events = replay_trace(trace_file, format=format)
+    if format == "json":
+        import json as _json
+        console.print_json(_json.dumps(events, indent=2))
+
+
 # ------------------------------------------------------------------
 # self — self management, updates, doctor (uv + classic support)
 # ------------------------------------------------------------------
